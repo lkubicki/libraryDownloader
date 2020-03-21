@@ -1,0 +1,25 @@
+{
+  "name": "libraryDownloader",
+  "version": "1.0.0",
+  "main": "main.js",
+  "author": "3AM software",
+  "dependencies": {
+    "async": "2.5.0",
+    "cheerio": "1.0.0-rc.3",
+    "iconv-lite": "0.5.1",
+    "request": "2.88.0",
+    "request-promise": "4.2.5",
+    "request-debug": "^0.2.0",
+    "tough-cookie-filestore": "0.0.1",
+    "xml2js": "0.4.23"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./dist/main.js",
+    "full": "npm run tsc && node ./dist/main.js"
+  },
+  "devDependencies": {
+    "ts-node": "^8.6.2",
+    "typescript": "^3.7.4"
+  }
+}

@@ -1,0 +1,13 @@
+[
+  {
+    "bookstoreName": "Virtualo",
+    "moduleName": "virtualo",
+    "controllerName": "Virtualo",
+    "login": "",
+    "password": "",
+    "mainPageUrl": "https://virtualo.pl",
+    "bookshelfUrl": "https://virtualo.pl/?lib",
+    "loginFormUrl": "https://virtualo.pl/logowanie",
+    "loginServiceUrl": "https://virtualo.pl/user.php?cmd=login"
+  }
+]

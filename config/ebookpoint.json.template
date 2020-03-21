@@ -1,0 +1,17 @@
+[
+  {
+    "bookstoreName": "Ebookpoint",
+    "moduleName": "ebookpoint",
+    "controllerName": "Ebookpoint",
+    "login": "",
+    "password": "",
+    "mainPageUrl": "https://ebookpoint.pl/",
+    "bookshelfUrl": "https://ebookpoint.pl/users/konto/biblioteka",
+    "archiveUrl": "https://ebookpoint.pl/users/konto/archiwum/ebooki",
+    "loginFormUrl": "https://ebookpoint.pl/users",
+    "loginServiceUrl": "https://ebookpoint.pl/users/index.cgi",
+    "generateProductServiceUrl": "https://ebookpoint.pl/users/gen.cgi?co=gen&https://ebookpoint.pl/users/ident=_bookId_&control=_control_&format=pdf",
+    "generateProductStatusServiceUrl": "https://ebookpoint.pl/users/getLib.php?control=_control_",
+    "downloadUrl": "https://ebookpoint.pl/users/get.cgi?ident=_bookId_&control=_control_&format=_fileFormat_"
+  }
+]

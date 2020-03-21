@@ -1,0 +1,15 @@
+[
+  {
+    "bookstoreName": "Woblink",
+    "moduleName": "woblink",
+    "controllerName": "Woblink",
+    "login": "",
+    "password": "",
+    "mainPageUrl": "https://woblink.com/",
+    "bookshelfUrl": "https://woblink.com/profile/moja-polka",
+    "loginFormUrl": "https://woblink.com/logowanie",
+    "loginServiceUrl": "https://woblink.com/logowanie",
+    "generateProductService": "https://woblink.com/account/item/download/status",
+    "downloadUrl": "https://woblink.com/account/item/download/ebook/_copyId_/_fileFormat_"
+  }
+]

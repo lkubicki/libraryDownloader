@@ -1,0 +1,15 @@
+[
+  {
+    "bookstoreName": "Nexto",
+    "moduleName": "nexto",
+    "controllerName": "Nexto",
+    "login": "",
+    "password": "",
+    "mainPageUrl": "https://www.nexto.pl/",
+    "bookshelfUrl": "https://www.nexto.pl/klub/biblioteka.xml",
+    "prepareProductServiceUrl": "https://www.nexto.pl/rf/ajax?method=com.janmedia.net.order.OrderSummaryAjaxFacade.prepareFile&param=_fileId_&param=_fileTypeId_",
+    "productStatusServiceUrl":  "https://www.nexto.pl/rf/ajax?method=com.janmedia.net.order.OrderSummaryAjaxFacade.getFileCouponStatus&param=_fileId_&param=_fileTypeId_",
+    "loginFormUrl": "https://www.nexto.pl/klub/login.xml?referer=%2Fklub%2Fbiblioteka.xml",
+    "loginServiceUrl": "https://www.nexto.pl/klub/login.xml?referer=%2Fklub%2Fbiblioteka.xml"
+  }
+]

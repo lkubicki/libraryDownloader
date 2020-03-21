@@ -1,0 +1,14 @@
+[
+  {
+    "bookstoreName": "Manning Publications",
+    "moduleName": "manning",
+    "controllerName": "Manning",
+    "login": "",
+    "password": "",
+    "mainPageUrl": "https://www.manning.com/",
+    "bookshelfUrl": "https://www.manning.com/dashboard",
+    "booksListUrl" : "https://www.manning.com/dashboard/getLicensesAjax?isDropboxIntegrated=&max=1000&order=purchaseDate&sort=desc&filter=all&offset=0",
+    "loginFormUrl": "https://login.manning.com/login?service=https%3A%2F%2Fwww.manning.com%2Flogin%2Fcas",
+    "loginServiceUrl": "https://login.manning.com/login?service=https%3A%2F%2Fwww.manning.com%2Flogin%2Fcas"
+  }
+]
