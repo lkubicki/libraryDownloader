@@ -1,5 +1,6 @@
 # libraryDownloader
 TypeScript learning project.  
+To run it, you need to have node.js and Typescript installed  
 This TypeScript application lets you download the ebooks you have purchased from various publishers or ebook sellers, like:
 * [Apress](https://apress.com)
 * [Ebookpoint](https://ebookpoint.pl)
