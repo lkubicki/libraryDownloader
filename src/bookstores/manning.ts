@@ -10,7 +10,8 @@ export class Manning extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login";
 
     protected async logIn(request: any): Promise<string> {
-        let loginFormData: { lt: string, execution: string, eventId: string } = await this.visitLoginForm(request, this.config.loginFormUrl);
+        let loginFormBody = await this.visitLoginForm(request, this.config.loginFormUrl);
+        let loginFormData: { lt: string, execution: string, eventId: string } = this.getLoginFormData(loginFormBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
         return new Promise((resolve, reject) => {
             const postRequestOptions = {
@@ -33,15 +34,6 @@ export class Manning extends Bookstore {
                     } else {
                         reject(`Could not log in as ${this.config.login}`);
                     }
-                })
-        });
-    }
-
-    private async visitLoginForm(request: any, loginFormUrl: string): Promise<{ lt: string, execution: string, eventId: string }> {
-        return new Promise((resolve) => {
-            request.get(loginFormUrl)
-                .then((body) => {
-                    resolve(this.getLoginFormData(body));
                 })
         });
     }

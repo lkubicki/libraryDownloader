@@ -59,17 +59,6 @@ export class Ebookpoint extends Bookstore {
         });
     }
 
-    private async visitLoginForm(request: any, loginFormUrl: string) {
-        return new Promise((resolve, reject) => {
-            request.get(loginFormUrl)
-                .then((body: string) => {
-                    timingUtils.delay(ONE_SECOND).then(() => {
-                        resolve();
-                    });
-                })
-        });
-    }
-
     protected async getProducts(request: any, bookshelfPageBody: string) {
         await this.getProductsFromShelf(request, bookshelfPageBody, ".ebooki");
         console.log(`${new Date().toISOString()} - Getting books from archive`);

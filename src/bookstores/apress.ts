@@ -38,16 +38,6 @@ export class Apress extends Bookstore {
         });
     }
 
-    private async visitLoginForm(request: any, loginFormUrl: string) {
-        await timingUtils.delay(ONE_SECOND);
-        return new Promise((resolve) => {
-            request.get(loginFormUrl)
-                .then(() => {
-                    resolve();
-                })
-        });
-    }
-
     protected async getProducts(request: any, bookshelfPageBody: string) {
         let $ = await cheerio.load(bookshelfPageBody);
         for (let productPart of $('.products ul li .product-information')) {

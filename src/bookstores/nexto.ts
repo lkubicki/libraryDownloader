@@ -42,15 +42,6 @@ export class Nexto extends Bookstore {
         });
     }
 
-    private async visitLoginForm(request: any, loginFormUrl: string): Promise<string> {
-        return new Promise((resolve) => {
-            request.get(loginFormUrl)
-                .then(() => {
-                    resolve();
-                })
-        });
-    }
-
     protected async getProducts(request: any, bookshelfPageBody: string) {
         let $ = await cheerio.load(bookshelfPageBody);
         const pageUrls: string[] = this.getPageUrls($, bookshelfPageBody);

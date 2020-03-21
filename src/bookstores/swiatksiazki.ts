@@ -12,7 +12,8 @@ export class SwiatKsiazki extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login";
 
     protected async logIn(request: any): Promise<string> {
-        let formKey: string = await this.visitLoginForm(request, this.config.loginFormUrl);
+        let loginFormBody: string = await this.visitLoginForm(request, this.config.loginFormUrl);
+        let formKey: string = await this.getLoginFormData(loginFormBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
         return new Promise((resolve, reject) => {
             const postRequestOptions = {
@@ -34,15 +35,6 @@ export class SwiatKsiazki extends Bookstore {
                     } else {
                         reject(`Could not log in as ${this.config.login}`);
                     }
-                })
-        });
-    }
-
-    private async visitLoginForm(request: any, loginFormUrl: string): Promise<string> {
-        return new Promise((resolve) => {
-            request.get(loginFormUrl)
-                .then((body) => {
-                    resolve(this.getLoginFormData(body));
                 })
         });
     }

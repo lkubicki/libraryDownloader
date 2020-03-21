@@ -56,17 +56,6 @@ export class InformIT extends Bookstore {
         });
     }
 
-    private async visitLoginForm(request: any, loginFormUrl: string) {
-        return new Promise((resolve, reject) => {
-            request.get(loginFormUrl)
-                .then((body: string) => {
-                    timingUtils.delay(ONE_SECOND).then(() => {
-                        resolve();
-                    });
-                })
-        });
-    }
-
     protected async getProducts(request: any, bookshelfPageBody: string) {
         const $ = cheerio.load(bookshelfPageBody);
         for (let ebookListElement of $("dl.rFull")) {

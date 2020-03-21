@@ -13,7 +13,8 @@ export class Publio extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "logowanie";
 
     protected async logIn(request: any): Promise<string> {
-        const csrfToken: Object = await this.visitLoginForm(request, this.config.loginFormUrl);
+        const loginFormBody = await this.visitLoginForm(request, this.config.loginFormUrl);
+        const csrfToken: Object = this.getCsrfTokenValue(loginFormBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
         return new Promise((resolve, reject) => {
             const getRequestOptions = {
@@ -34,17 +35,6 @@ export class Publio extends Bookstore {
                     } else {
                         reject(`Could not log in as ${this.config.login}`);
                     }
-                })
-        });
-    }
-
-    private async visitLoginForm(request: any, loginFormUrl: string): Promise<Object> {
-        return new Promise((resolve, reject) => {
-            request.get(loginFormUrl)
-                .then((body: string) => {
-                    timingUtils.delay(ONE_SECOND).then(() => {
-                        resolve(this.getCsrfTokenValue(body));
-                    });
                 })
         });
     }

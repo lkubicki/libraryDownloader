@@ -7,6 +7,7 @@ import {timingUtils} from "../utils/timingUtils";
 // require('request-debug')(Request);
 
 const constants = require('../../config/config.json');
+const ONE_SECOND: number = 1000;
 
 export abstract class Bookstore {
     protected notLoggedInRedirectUrlPart: string;
@@ -72,6 +73,12 @@ export abstract class Bookstore {
         });
     }
 
+    protected async visitLoginForm(request: any, loginFormUrl: string): Promise<string> {
+        const pageBody = this.getPageBody(request, loginFormUrl, 0);
+        await timingUtils.delayExactly(ONE_SECOND);
+        return pageBody;
+    }
+
     protected abstract async logIn(request: any): Promise<string>;
 
     protected abstract async getProducts(request: any, bookshelfPageBody: string);
@@ -114,10 +121,14 @@ export abstract class Bookstore {
 
     protected async getFullPageResponse(request: any, pageUrl: string, delay: number): Promise<string> {
         await timingUtils.delay(delay);
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             request.get(pageUrl)
                 .then((response) => {
                     resolve(response);
+                })
+                .catch((error) => {
+                    console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
+                    reject(error);
                 });
         });
     }

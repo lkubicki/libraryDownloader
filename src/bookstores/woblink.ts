@@ -39,17 +39,6 @@ export class Woblink extends Bookstore {
         });
     }
 
-    private async visitLoginForm(request: any, loginFormUrl: string) {
-        return new Promise((resolve, reject) => {
-            request.get(loginFormUrl)
-                .then((body: string) => {
-                    timingUtils.delay(ONE_SECOND).then(() => {
-                        resolve();
-                    });
-                })
-        });
-    }
-
     protected async getProducts(request: any, bookshelfPageBody: string) {
         let pageUrls: string[] = this.getPageUrls(bookshelfPageBody, this.config.mainPageUrl);
         console.log(`${new Date().toISOString()} - Found ${pageUrls.length + 1} bookshelf ` + (pageUrls.length >= 1 ? `pages` : `page`));

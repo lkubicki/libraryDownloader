@@ -44,10 +44,6 @@ export class Programista extends Bookstore {
         });
     }
 
-    private async visitLoginForm(request: any, loginFormUrl: any) {
-        return this.getPageBody(request, loginFormUrl, 0, true);
-    }
-
     protected async getProducts(request: any, bookshelfPageBody: string) {
         const $ = cheerio.load(bookshelfPageBody);
         for (let magazineElement of $(".panel-body.panel-dlc")) {
