@@ -12,8 +12,8 @@ This TypeScript application lets you download the ebooks you have purchased from
 * [Virtualo](https://virtualo.pl)
 * [Woblink](https://woblink.com)
 
-For each of these bookstores, there is a template file in /config folder (named _bookstoreName_.json.template), which you need to add as part of /config/bookstore.json file in order for your books to downloaded from your library. Of course, first you need to add your username and password, ie.:  
-To configure Manning Publishing and Apress you need to have following configuration in your /config/bookstore.json file:
+For each of these bookstores, there is a template file in /config folder (named _bookstoreName_.json.template), which you need to add as part of /config/bookstores.json file in order for your books to downloaded from your library. Of course, first you need to add your username and password, ie.:  
+To configure Manning Publishing and Apress you need to have following configuration in your /config/bookstores.json file:
 ```json
 [
   {
