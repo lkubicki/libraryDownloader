@@ -16,9 +16,7 @@ async function getBooksFromStores() {
 
         await getBooksFromStore(storeItem, constants.cookiesDir, constants.booksDir, constants.maxFileSize)
             .then(() => console.log(`${new Date().toISOString()} - ${bookstoreName} for ${login}\t\tFinished\n`))
-            .catch(error => {
-                console.log(`${new Date().toISOString()} - ${bookstoreName} for ${login}\t\tFAILED - ${error}\n`);
-            });
+            .catch(error => console.log(`${new Date().toISOString()} - ${bookstoreName} for ${login}\t\tFAILED - ${error}\n`));
     }
 }
 

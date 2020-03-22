@@ -16,27 +16,19 @@ export class Publio extends Bookstore {
         const loginFormBody = await this.visitLoginForm(request, this.config.loginFormUrl);
         const csrfToken: Object = this.getCsrfTokenValue(loginFormBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        return new Promise((resolve, reject) => {
-            const getRequestOptions = {
-                resolveWithFullResponse: true,
-                method: "POST",
-                form: {
-                    _csrf: csrfToken['csrfToken'],
-                    action: "LOGIN",
-                    j_username: this.config.login,
-                    j_password: this.config.password,
-                }
-            };
-            request.post(this.config.loginServiceUrl, getRequestOptions)
-                .then((response) => {
-                    if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
-                        console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                        resolve(response.body);
-                    } else {
-                        reject(`Could not log in as ${this.config.login}`);
-                    }
-                })
-        });
+
+        const loginRequestOptions = {
+            resolveWithFullResponse: true,
+            method: "POST",
+            form: {
+                _csrf: csrfToken['csrfToken'],
+                action: "LOGIN",
+                j_username: this.config.login,
+                j_password: this.config.password,
+            }
+        };
+
+        return this.sendLoginForm(request, loginRequestOptions);
     }
 
     async getProducts(request: any, bookshelfPageBody: string) {
@@ -125,9 +117,12 @@ export class Publio extends Bookstore {
         return new Promise((resolve, reject) => {
             if (packageId) {
                 const productDownloadPartUrl = `${this.config.productDownloadTypesServiceUrl}?id=${packageId}`;
-                this.getPageBody(request, productDownloadPartUrl, ONE_SECOND).then((body) => {
-                    resolve(this.getDownloadLinksFromPage(body, packageId));
-                })
+                this.getPageBody(request, productDownloadPartUrl, ONE_SECOND)
+                    .then((body) => {
+                        resolve(this.getDownloadLinksFromPage(body, packageId));
+                    }).catch((error) => {
+                        reject(`Could not get the page: ${productDownloadPartUrl}. Error: ${error}`)
+                    });
             } else {
                 reject('Could not find packageId within:\n' + body);
             }

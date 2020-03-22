@@ -15,28 +15,18 @@ export class Woblink extends Bookstore {
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        return new Promise((resolve, reject) => {
-            const postRequestOptions = {
-                resolveWithFullResponse: true,
-                method: "POST",
-                form: {
-                    login: {
-                        email: this.config.login,
-                        password: this.config.password
-                    },
-                    referer: this.config.bookshelfUrl
-                }
-            };
-            request.post(this.config.loginServiceUrl, postRequestOptions)
-                .then((response) => {
-                    if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
-                        console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                        resolve(response.body);
-                    } else {
-                        reject(`Could not log in as ${this.config.login}`);
-                    }
-                })
-        });
+        const loginRequestOptions = {
+            resolveWithFullResponse: true,
+            method: "POST",
+            form: {
+                login: {
+                    email: this.config.login,
+                    password: this.config.password
+                },
+                referer: this.config.bookshelfUrl
+            }
+        };
+        return this.sendLoginForm(request, loginRequestOptions);
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {
@@ -173,8 +163,7 @@ export class Woblink extends Bookstore {
                     resolve(response);
                 })
                 .catch(error => {
-//                    console.log(`${new Date().toISOString()} - Error generating ${bookFormat} file: ${error}`);
-                    reject(error)
+                    reject(`Error generating ${bookFormat} file: ${error}`)
                 })
         });
     }

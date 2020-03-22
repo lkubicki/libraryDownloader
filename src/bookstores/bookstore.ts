@@ -67,8 +67,7 @@ export abstract class Bookstore {
                     });
                 })
                 .catch((error) => {
-                    console.log(`${new Date().toISOString()} - An error occured: ${error}`);
-                    reject(error);
+                    reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`)
                 });
         });
     }
@@ -135,16 +134,17 @@ export abstract class Bookstore {
 
     protected async checkSizeAndDownloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string): Promise<any> {
         return new Promise((resolve, reject) => {
-            request.head(encodeURI(downloadUrl)).then((headResponse) => {
-                if (headResponse['content-length'] != undefined && headResponse['content-length'] < this.maxFileSize) {
-                    return this.downloadFile(request, downloadUrl, delay, downloadDir, fileName);
-                } else {
-                    console.log(`${new Date().toISOString()} - Could not download ${fileName} as it has size of ${headResponse['content-length']} which is more than allowed ${this.maxFileSize}`);
-                    resolve();
-                }
-            }).catch((error) => {
-                reject(`Could not execute HEAD request for ${fileName} from url ${downloadUrl}: ${error}`);
-            });
+            request.head(encodeURI(downloadUrl))
+                .then((headResponse) => {
+                    if (headResponse['content-length'] != undefined && headResponse['content-length'] < this.maxFileSize) {
+                        return this.downloadFile(request, downloadUrl, delay, downloadDir, fileName);
+                    } else {
+                        console.log(`${new Date().toISOString()} - Could not download ${fileName} as it has size of ${headResponse['content-length']} which is more than allowed ${this.maxFileSize}`);
+                        resolve();
+                    }
+                }).catch((error) => {
+                    reject(`Could not execute HEAD request for ${fileName} from url ${downloadUrl}: ${error}`);
+                });
         });
     }
 
@@ -160,6 +160,28 @@ export abstract class Bookstore {
                 .on('error', (error) => {
                     reject(`Could not download ${fileName} from url ${downloadUrl}: ${error}`);
                 });
+        });
+    }
+
+    protected sendLoginForm(request: any, postRequestOptions: object): Promise<string> {
+        return new Promise((resolve, reject) => {
+            request.post(this.config.loginServiceUrl, postRequestOptions)
+                .then((response) => {
+                    this.checkIfUserIsLoggedIn(request)
+                        .then((checkResult) => {
+                            if (checkResult.isLoggedIn) {
+                                console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
+                                resolve(checkResult.body);
+                            } else {
+                                reject(`Could not log in as ${this.config.login}`);
+                            }
+                        }).catch((error) => {
+                        reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`);
+                    });
+                })
+                .catch((error) => {
+                    reject(`Could not log in as ${this.config.login}. Error: ${error}`);
+                })
         });
     }
 }

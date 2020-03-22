@@ -15,7 +15,8 @@ export class Virtualo extends Bookstore {
     protected async logIn(request: any): Promise<string> {
         await timingUtils.delay(ONE_SECOND * 3);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        const postRequestOptions = {
+
+        const loginPostRequestOptions = {
             resolveWithFullResponse: true,
             method: 'POST',
             headers: {
@@ -27,21 +28,29 @@ export class Virtualo extends Bookstore {
                 password: this.config.password
             }
         };
-        let response = await request.post(this.config.loginServiceUrl, postRequestOptions);
+        const checkLoginGetRequestOptions = {
+            resolveWithFullResponse: true
+        };
 
         return new Promise((resolve, reject) => {
-            const getRequestOptions = {
-                resolveWithFullResponse: true
-            };
-            request.get(this.config.bookshelfUrl, getRequestOptions)
-                .then((response) => {
-                    if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
-                        console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                        resolve(response.body);
-                    } else {
-                        reject(`Could not log in as ${this.config.login}`);
-                    }
+            let response = request.post(this.config.loginServiceUrl, loginPostRequestOptions)
+                .then(() => {
+                    request.get(this.config.bookshelfUrl, checkLoginGetRequestOptions)
+                        .then((response) => {
+                            if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
+                                console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
+                                resolve(response.body);
+                            } else {
+                                reject(`Could not log in as ${this.config.login}`);
+                            }
+                        })
+                        .catch((error) => {
+                            reject(`Could not log in as ${this.config.login}. Error: ${error}`);
+                        })
                 })
+                .catch((error) => {
+                    reject(`Could not log in as ${this.config.login}. Error: ${error}`);
+                });
         });
     }
 

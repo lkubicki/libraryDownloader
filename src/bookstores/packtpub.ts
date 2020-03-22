@@ -111,6 +111,9 @@ export class PacktPub extends Bookstore {
                             }
                         })
                 })
+                .catch((error) => {
+                    reject(`Could not log in as ${this.config.login}. Error: ${error}`);
+                })
         });
     }
 

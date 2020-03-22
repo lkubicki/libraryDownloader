@@ -18,31 +18,37 @@ export class Ebookpoint extends Bookstore {
             encoding: null,
             resolveWithFullResponse: true
         };
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             request.get(this.config.bookshelfUrl, getRequestOptions)
                 .then((response) => {
                     resolve({
                         isLoggedIn: (response.request.uri.href == this.config.bookshelfUrl),
                         body: iconv.decode(Buffer.from(response.body), "ISO-8859-2")
                     });
-                });
+                })
+                .catch((error) => {
+                    reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`);
+                })
+
         });
     }
 
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
+
+        const postRequestOptions = {
+            resolveWithFullResponse: true,
+            method: "POST",
+            form: {
+                gdzie: this.config.bookshelfUrl,
+                edit: '',
+                loginemail: this.config.login,
+                haslo: this.config.password
+            }
+        };
+
         return new Promise((resolve, reject) => {
-            const postRequestOptions = {
-                resolveWithFullResponse: true,
-                method: "POST",
-                form: {
-                    gdzie: this.config.bookshelfUrl,
-                    edit: '',
-                    loginemail: this.config.login,
-                    haslo: this.config.password
-                }
-            };
             request.post(this.config.loginServiceUrl, postRequestOptions)
                 .then((response) => {
                     if (response.request.uri.href == this.config.bookshelfUrl) {
@@ -51,10 +57,14 @@ export class Ebookpoint extends Bookstore {
                             encoding: null
                         };
                         request.get(this.config.bookshelfUrl, getRequestOptions)
-                            .then((body) => resolve(iconv.decode(Buffer.from(body), "ISO-8859-2")));
+                            .then((body) => resolve(iconv.decode(Buffer.from(body), "ISO-8859-2")))
+                            .catch((error) => reject(`Could not get page contents for: ${this.config.bookshelfUrl}. Error: ${error}`));
                     } else {
                         reject(`Could not log in as ${this.config.login}`);
                     }
+                })
+                .catch((error) => {
+                    reject(`Could not log in as ${this.config.login}. Error: ${error}`);
                 })
         });
     }

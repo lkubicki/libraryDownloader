@@ -16,26 +16,18 @@ export class Apress extends Bookstore {
         await this.visitLoginForm(request, this.config.loginFormUrl);
         await timingUtils.delay(ONE_SECOND * 3);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        return new Promise((resolve, reject) => {
-            const getRequestOptions = {
-                resolveWithFullResponse: true,
-                method: "POST",
-                form: {
-                    email: this.config.login,
-                    password: this.config.password,
-                    url: this.config.bookshelfUrl
-                }
-            };
-            request.post(this.config.loginServiceUrl, getRequestOptions)
-                .then((response) => {
-                    if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
-                        console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                        resolve(response.body);
-                    } else {
-                        reject(`Could not log in as ${this.config.login}`);
-                    }
-                })
-        });
+
+        const loginRequestOptions = {
+            resolveWithFullResponse: true,
+            method: "POST",
+            form: {
+                email: this.config.login,
+                password: this.config.password,
+                url: this.config.bookshelfUrl
+            }
+        };
+
+        return this.sendLoginForm(request, loginRequestOptions);
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {

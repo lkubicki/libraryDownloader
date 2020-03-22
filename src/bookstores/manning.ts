@@ -13,29 +13,21 @@ export class Manning extends Bookstore {
         let loginFormBody = await this.visitLoginForm(request, this.config.loginFormUrl);
         let loginFormData: { lt: string, execution: string, eventId: string } = this.getLoginFormData(loginFormBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        return new Promise((resolve, reject) => {
-            const postRequestOptions = {
-                resolveWithFullResponse: true,
-                method: "POST",
-                form: {
-                    username: this.config.login,
-                    password: this.config.password,
-                    lt: loginFormData.lt,
-                    execution: loginFormData.execution,
-                    _eventId: loginFormData.eventId,
-                    submit: ''
-                }
-            };
-            request.post(this.config.loginServiceUrl, postRequestOptions)
-                .then((response) => {
-                    if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
-                        console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                        resolve(response.body);
-                    } else {
-                        reject(`Could not log in as ${this.config.login}`);
-                    }
-                })
-        });
+
+        const loginRequestOptions = {
+            resolveWithFullResponse: true,
+            method: "POST",
+            form: {
+                username: this.config.login,
+                password: this.config.password,
+                lt: loginFormData.lt,
+                execution: loginFormData.execution,
+                _eventId: loginFormData.eventId,
+                submit: ''
+            }
+        };
+
+        return this.sendLoginForm(request, loginRequestOptions);
     }
 
     private getLoginFormData(body: string): { lt: string, execution: string, eventId: string } {

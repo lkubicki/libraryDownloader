@@ -17,31 +17,20 @@ export class Programista extends Bookstore {
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        return new Promise((resolve, reject) => {
-            const postRequestOptions = {
-                form:
-                    {
-                        _wp_original_http_referer: this.config.mainPageUrl,
-                        log: this.config.login,
-                        pwd: this.config.password,
-                        "wp-submit": "Zaloguj+się",
-                        redirect_to: "https://programistamag.pl/wp-admin/",
-                        instance: "",
-                        action: "login"
-                    }
-            };
-            request.post(this.config.loginServiceUrl, postRequestOptions)
-                .then((response) => {
-                    this.checkIfUserIsLoggedIn(request).then((checkResult) => {
-                        if (checkResult.isLoggedIn) {
-                            console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                            resolve(checkResult.body);
-                        } else {
-                            reject(`Could not log in as ${this.config.login}`);
-                        }
-                    });
-                })
-        });
+
+        const loginRequestOptions = {
+            form:
+                {
+                    _wp_original_http_referer: this.config.mainPageUrl,
+                    log: this.config.login,
+                    pwd: this.config.password,
+                    "wp-submit": "Zaloguj+się",
+                    redirect_to: "https://programistamag.pl/wp-admin/",
+                    instance: "",
+                    action: "login"
+                }
+        };
+        return this.sendLoginForm(request, loginRequestOptions);
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {

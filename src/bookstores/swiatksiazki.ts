@@ -15,28 +15,20 @@ export class SwiatKsiazki extends Bookstore {
         let loginFormBody: string = await this.visitLoginForm(request, this.config.loginFormUrl);
         let formKey: string = await this.getLoginFormData(loginFormBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        return new Promise((resolve, reject) => {
-            const postRequestOptions = {
-                resolveWithFullResponse: true,
-                form: {
-                    form_key: formKey,
-                    login: {
-                        username: this.config.login,
-                        password: this.config.password,
-                    },
-                    send: null
-                }
-            };
-            request.post(this.config.loginServiceUrl, postRequestOptions)
-                .then((response) => {
-                    if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
-                        console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                        resolve(response.body);
-                    } else {
-                        reject(`Could not log in as ${this.config.login}`);
-                    }
-                })
-        });
+
+        const loginRequestOptions = {
+            resolveWithFullResponse: true,
+            form: {
+                form_key: formKey,
+                login: {
+                    username: this.config.login,
+                    password: this.config.password,
+                },
+                send: null
+            }
+        };
+
+        return this.sendLoginForm(request, loginRequestOptions);
     }
 
     private getLoginFormData(body: string): string {

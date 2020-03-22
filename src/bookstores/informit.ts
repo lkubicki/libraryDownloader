@@ -13,47 +13,22 @@ const ONE_SECOND: number = 1000;
 export class InformIT extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login.aspx";
 
-    protected async checkIfUserIsLoggedIn(request: any): Promise<{ isLoggedIn: boolean, body: string }> {
-        const getRequestOptions = {
-            resolveWithFullResponse: true
-        };
-        return new Promise((resolve) => {
-            request.get(this.config.bookshelfUrl, getRequestOptions)
-                .then((response) => {
-                    resolve({
-                        isLoggedIn: response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0,
-                        body: response.body
-                    });
-                });
-        });
-    }
-
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        return new Promise((resolve, reject) => {
-            const postRequestOptions = {
-                headers: {
-                    origin: this.config.mainServiceUrl,
-                    referer: this.config.bookshelfUrl
-                },
-                form: {
-                    email_address: this.config.login,
-                    password: this.config.password
-                }
-            };
-            request.post(this.config.loginServiceUrl, postRequestOptions)
-                .then((response) => {
-                    this.checkIfUserIsLoggedIn(request).then((checkResult) => {
-                        if (checkResult.isLoggedIn) {
-                            console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                            resolve(checkResult.body);
-                        } else {
-                            reject(`Could not log in as ${this.config.login}`);
-                        }
-                    });
-                })
-        });
+
+        const loginRequestOptions = {
+            headers: {
+                origin: this.config.mainServiceUrl,
+                referer: this.config.bookshelfUrl
+            },
+            form: {
+                email_address: this.config.login,
+                password: this.config.password
+            }
+        };
+
+        return this.sendLoginForm(request, loginRequestOptions);
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {

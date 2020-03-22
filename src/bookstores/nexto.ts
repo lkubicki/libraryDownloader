@@ -16,30 +16,22 @@ export class Nexto extends Bookstore {
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        return new Promise((resolve, reject) => {
-            const postRequestOptions = {
-                resolveWithFullResponse: true,
-                form: {
-                    fb_form_id: 'login',
-                    email: this.config.login,
-                    password: this.config.password,
-                    extra_param: null,
-                    remember: {
-                        0: 1,
-                        1: 0
-                    }
+
+        const loginRequestOptions = {
+            resolveWithFullResponse: true,
+            form: {
+                fb_form_id: 'login',
+                email: this.config.login,
+                password: this.config.password,
+                extra_param: null,
+                remember: {
+                    0: 1,
+                    1: 0
                 }
-            };
-            request.post(this.config.loginServiceUrl, postRequestOptions)
-                .then((response) => {
-                    if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
-                        console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                        resolve(response.body);
-                    } else {
-                        reject(`Could not log in as ${this.config.login}`);
-                    }
-                })
-        });
+            }
+        };
+
+        return this.sendLoginForm(request, loginRequestOptions);
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {
