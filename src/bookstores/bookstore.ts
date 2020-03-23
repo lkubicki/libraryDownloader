@@ -137,7 +137,9 @@ export abstract class Bookstore {
             request.head(encodeURI(downloadUrl))
                 .then((headResponse) => {
                     if (headResponse['content-length'] != undefined && headResponse['content-length'] < this.maxFileSize) {
-                        return this.downloadFile(request, downloadUrl, delay, downloadDir, fileName);
+                        this.downloadFile(request, downloadUrl, delay, downloadDir, fileName)
+                            .then((response) => resolve(response))
+                            .catch((error) => reject(error));
                     } else {
                         console.log(`${new Date().toISOString()} - Could not download ${fileName} as it has size of ${headResponse['content-length']} which is more than allowed ${this.maxFileSize}`);
                         resolve();

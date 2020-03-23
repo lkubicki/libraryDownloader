@@ -207,7 +207,7 @@ export class Ebookpoint extends Bookstore {
         }
     }
 
-    private async checkFileSizeAndDownload(request: any, id: string, controlValue: string, downloadDir: string, fileName: string, fileFormat: string) {
+    private async checkFileSizeAndDownload(request: any, id: string, controlValue: string, downloadDir: string, fileName: string, fileFormat: string): Promise<any> {
         const mapObj = {
             _bookId_: id,
             _control_: controlValue,
