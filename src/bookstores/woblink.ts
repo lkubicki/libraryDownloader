@@ -7,8 +7,6 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
-const ONE_SECOND: number = 1000;
-
 export class Woblink extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "logowanie";
 
@@ -36,7 +34,7 @@ export class Woblink extends Bookstore {
         await this.downloadPublicationsFromPage(request, pageBody);
         for (let shelfPageUrl of pageUrls) {
             console.log(`${new Date().toISOString()} - Changing page to: ${shelfPageUrl}`);
-            pageBody = await this.getPageBody(request, shelfPageUrl, ONE_SECOND);
+            pageBody = await this.getPageBody(request, shelfPageUrl, timingUtils.ONE_SECOND);
             await this.downloadPublicationsFromPage(request, pageBody);
         }
     }
@@ -139,7 +137,7 @@ export class Woblink extends Bookstore {
                 }
                 if (response == undefined || !responseObject['ready']) {
                     console.log(`${new Date().toISOString()} - Waiting for ${bookFormat} file to be generated`);
-                    await timingUtils.delayExactly(10 * ONE_SECOND);
+                    await timingUtils.delayExactly(10 * timingUtils.ONE_SECOND);
                 }
                 count++
             } while (!responseObject['ready'] && count < 10);
@@ -176,6 +174,6 @@ export class Woblink extends Bookstore {
         let downloadLink: string = this.config.downloadUrl.replace(/_copyId_|_fileFormat_/gi, function (matched) {
             return mapObj[matched];
         });
-        return this.downloadFile(request, downloadLink, ONE_SECOND * 3, downloadDir, fileName);
+        return this.downloadFile(request, downloadLink, timingUtils.ONE_SECOND * 3, downloadDir, fileName);
     }
 }

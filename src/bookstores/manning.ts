@@ -7,8 +7,6 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {stringUtils} from "../utils/stringUtils";
 import {timingUtils} from "../utils/timingUtils";
 
-const ONE_SECOND: number = 1000;
-
 export class Manning extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login";
 
@@ -46,7 +44,7 @@ export class Manning extends Bookstore {
         booksListBody = `<html><body><table>${booksListBody}</table></body></html>`;
         let $ = await cheerio.load(booksListBody);
         for (let productPart of $('tr.license-row')) {
-            await timingUtils.delayExactly(ONE_SECOND);
+            await timingUtils.delayExactly(timingUtils.ONE_SECOND);
             const title = $('div.product-title', productPart).text().trim();
             const authors = this.formatAuthors($('div.product-authorship', productPart).text());
             const fileTypes = this.getFileTypesData($, $('div.download-selection', productPart));
@@ -127,7 +125,7 @@ export class Manning extends Bookstore {
 
         const codeFileName = `${bookNameAsPath}-CODE.zip`;
         if (codeLink && !(await filesystemUtils.checkIfElementExists(downloadDir, codeFileName))) {
-            await this.checkSizeAndDownloadFile(request, codeLink, ONE_SECOND * 3, downloadDir, codeFileName)
+            await this.checkSizeAndDownloadFile(request, codeLink, timingUtils.ONE_SECOND * 3, downloadDir, codeFileName)
                 .catch((error) => console.log(`${new Date().toISOString()} - ${error}`));
         } else {
             console.log(`${new Date().toISOString()} - No need to download code samples for '${bookName} - already downloaded`);

@@ -8,8 +8,6 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
-const ONE_SECOND: number = 1000;
-
 export class Ebookpoint extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login";
 
@@ -72,7 +70,7 @@ export class Ebookpoint extends Bookstore {
     protected async getProducts(request: any, bookshelfPageBody: string) {
         await this.getProductsFromShelf(request, bookshelfPageBody, ".ebooki");
         console.log(`${new Date().toISOString()} - Getting books from archive`);
-        const archivePageBody = await this.getPageBodyWithAdditionalOptions(request, this.config.archiveUrl, ONE_SECOND, false, {encoding: null});
+        const archivePageBody = await this.getPageBodyWithAdditionalOptions(request, this.config.archiveUrl, timingUtils.ONE_SECOND, false, {encoding: null});
         await this.getProductsFromShelf(request, iconv.decode(Buffer.from(archivePageBody), "ISO-8859-2"), ".lista li");
     }
 
@@ -131,7 +129,7 @@ export class Ebookpoint extends Bookstore {
         let downloadLink: string = this.config.generateProductServiceUrl.replace(/_bookId_|_control_/gi, function (matched) {
             return mapObj[matched];
         });
-        await this.getPageBody(request, downloadLink, ONE_SECOND * 5);
+        await this.getPageBody(request, downloadLink, timingUtils.ONE_SECOND * 5);
         console.log(`${new Date().toISOString()} - Product preparation started`);
         return await this.waitUntilPrepared(request, controlValue);
     }
@@ -160,7 +158,7 @@ export class Ebookpoint extends Bookstore {
                 }
                 count++;
                 if (!ready && !notHandled) {
-                    await timingUtils.delayExactly(ONE_SECOND * 10);
+                    await timingUtils.delayExactly(timingUtils.ONE_SECOND * 10);
                 }
             } while (!ready && count < MAX_RETRY && !notHandled);
             return {
@@ -217,6 +215,6 @@ export class Ebookpoint extends Bookstore {
             return mapObj[matched];
         });
 
-        return this.checkSizeAndDownloadFile(request, downloadLink, ONE_SECOND * 4, downloadDir, fileName);
+        return this.checkSizeAndDownloadFile(request, downloadLink, timingUtils.ONE_SECOND * 4, downloadDir, fileName);
     }
 }

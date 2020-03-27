@@ -8,8 +8,6 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
-const ONE_SECOND: number = 1000;
-
 export class InformIT extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login.aspx";
 
@@ -45,7 +43,7 @@ export class InformIT extends Bookstore {
                             const fileName = stringUtils.formatPathName(title);
                             const downloadDir = `${this.booksDir}${fileName}`;
                             if (!(await filesystemUtils.checkIfElementExists(downloadDir, `${fileName}.${refreshLink.fileType}`))) {
-                                await timingUtils.delay(ONE_SECOND * 2);
+                                await timingUtils.delay(timingUtils.ONE_SECOND * 2);
                                 const generateResponse = await this.generateProduct(request, refreshLink.isbn13, refreshLink.nid, refreshLink.fileType);
                                 if (generateResponse.ready) {
                                     console.log(`${new Date().toISOString()} - ${refreshLink.fileType} files for: ${title} generated. Downloading.`);
@@ -163,7 +161,7 @@ export class InformIT extends Bookstore {
             const responseXml = await request.post(this.config.generateProductServiceUrl, postRequestOptions);
             response = await xmlParser.parseStringPromise(responseXml);
             console.log(`${new Date().toISOString()} - Waiting for ${postRequestOptions.form.format} file to be generated: attempt ${counter} - RequestSuccess ${response.Result.RequestSuccess[0]}, GenerationCompleted ${response.Result.GenerationCompleted[0]}`);
-            delay = ONE_SECOND * 5;
+            delay = timingUtils.ONE_SECOND * 5;
             counter++;
         } while (response.Result.GenerationCompleted[0] == "False" && counter < MAX_RETRY);
         if (counter <= MAX_RETRY && response.Result.GenerationCompleted[0] == "True") {
@@ -184,7 +182,7 @@ export class InformIT extends Bookstore {
         }
         const fileName = `${bookName}.${fileFormat}`;
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
-            return this.checkSizeAndDownloadFile(request, downloadLink, ONE_SECOND * 3, downloadDir, fileName);
+            return this.checkSizeAndDownloadFile(request, downloadLink, timingUtils.ONE_SECOND * 3, downloadDir, fileName);
         } else {
             console.log(`${new Date().toISOString()} - No need to download ${fileFormat} file for ${bookName} - already downloaded`);
         }

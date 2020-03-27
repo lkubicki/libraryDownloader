@@ -7,14 +7,12 @@ import {timingUtils} from "../utils/timingUtils";
 import {filesystemUtils} from "../utils/filesystemUtils";
 import {stringUtils} from "../utils/stringUtils";
 
-const ONE_SECOND: number = 1000;
-
 export class Apress extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login";
 
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
-        await timingUtils.delay(ONE_SECOND * 3);
+        await timingUtils.delay(timingUtils.ONE_SECOND * 3);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
 
         const loginRequestOptions = {
@@ -72,7 +70,7 @@ export class Apress extends Bookstore {
         for (let downloadData of $('.bar-download-actions a.download', productPart)) {
             const downloadLinkText = $(downloadData).text();
             let fileType: string = (downloadLinkText != undefined ? downloadLinkText.replace('Download', '').trim() : "");
-            const downloadUrl = await this.getPageBody(request, `${this.config.mainPageUrl}${downloadData.attribs['href']}`, ONE_SECOND);
+            const downloadUrl = await this.getPageBody(request, `${this.config.mainPageUrl}${downloadData.attribs['href']}`, timingUtils.ONE_SECOND);
             downloads.push({fileType: fileType, downloadLink: downloadUrl});
         }
         return downloads;
@@ -87,7 +85,7 @@ export class Apress extends Bookstore {
             FS.mkdirSync(downloadDir);
         }
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, bookFileName))) {
-            await this.checkSizeAndDownloadFile(request, download.downloadLink, ONE_SECOND * 3, downloadDir, bookFileName);
+            await this.checkSizeAndDownloadFile(request, download.downloadLink, timingUtils.ONE_SECOND * 3, downloadDir, bookFileName);
         } else {
             console.log(`${new Date().toISOString()} - No need to download ${download.fileType} file for ${bookName} - file already downloaded`);
         }

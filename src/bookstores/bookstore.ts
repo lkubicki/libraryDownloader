@@ -7,7 +7,6 @@ import {timingUtils} from "../utils/timingUtils";
 // require('request-debug')(Request);
 
 const constants = require('../../config/config.json');
-const ONE_SECOND: number = 1000;
 
 export abstract class Bookstore {
     protected notLoggedInRedirectUrlPart: string;
@@ -74,7 +73,7 @@ export abstract class Bookstore {
 
     protected async visitLoginForm(request: any, loginFormUrl: string): Promise<string> {
         const pageBody = this.getPageBody(request, loginFormUrl, 0);
-        await timingUtils.delayExactly(ONE_SECOND);
+        await timingUtils.delayExactly(timingUtils.ONE_SECOND * 3);
         return pageBody;
     }
 

@@ -6,8 +6,6 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
-const DELAY: number = 1000;
-
 const FILE_EXTENSIONS = {
     code: "code.zip",
     epub: "epub",
@@ -32,7 +30,7 @@ export class PacktPub extends Bookstore {
         var offset: number = 0;
         var numberOfBooks: number = 0;
         do {
-            await timingUtils.delay(DELAY);
+            await timingUtils.delay(timingUtils.ONE_SECOND);
             const bookshelfContents: Object = await this.getBookshelfContents(request, this.config.bookshelfServiceUrl, accessToken, offset);
             numberOfBooks = bookshelfContents['count'];
             const listOfBooks = bookshelfContents['data'];
@@ -65,9 +63,10 @@ export class PacktPub extends Bookstore {
             FS.mkdirSync(downloadDirectory);
         }
         if (!elementExists) {
-            await timingUtils.delay(DELAY);
+            await timingUtils.delay(timingUtils.ONE_SECOND);
             const bookDownloadableUrl: string = await this.getDownloadUrl(request, this.config.productDownloadServiceUrl, accessToken, bookMetadata['productId'], downloadableItemType);
-            await this.downloadBookshelfItemFile(request, bookDownloadableUrl, accessToken, downloadDirectory, fileName);
+            await this.downloadBookshelfItemFile(request, bookDownloadableUrl, accessToken, downloadDirectory, fileName)
+                .catch((error) => console.log(`${new Date().toISOString()} - ${error}`));
         } else {
             console.log(`${new Date().toISOString()} - ${fileName} already downloaded`);
         }
@@ -165,7 +164,9 @@ export class PacktPub extends Bookstore {
                         .then((response) => {
                             resolve(JSON.parse(response));
                         })
+                        .catch((error) => reject(`Could not retrieve bookshelf page ${bookshelfServiceUrlWithOffset} contents: ${error}`))
                 })
+                .catch((error) => reject(`Could not retrieve bookshelf contents: ${error}`))
         });
     }
 
@@ -192,7 +193,7 @@ export class PacktPub extends Bookstore {
                             resolve(JSON.parse(response)['data'][0]);
                         })
                         .catch((error) => {
-                            reject(error)
+                            reject(`Could not get filetypes for ${isbn}: ${error}`)
                         });
                 });
         });
@@ -220,7 +221,7 @@ export class PacktPub extends Bookstore {
                         .then((response) => {
                             resolve(JSON.parse(response)['data']);
                         })
-                        .catch(error => reject(error));
+                        .catch(error => reject(`Could not get download url for ${fileType} file for ${isbn}: ${error}`));
                 })
         });
     }
@@ -248,6 +249,7 @@ export class PacktPub extends Bookstore {
                 .then((response) => {
                     resolve({fileSize: response.headers['content-length']});
                 })
+                .catch(error => reject(`Could not get file size for ${downloadUrl}: ${error}`));
         });
     }
 
@@ -281,7 +283,7 @@ export class PacktPub extends Bookstore {
                     resolve();
                 })
                 .on('error', (error) => {
-                    reject(error);
+                    reject(`Could not download ${fileName}: ${error}`);
                 });
         });
     }

@@ -7,13 +7,11 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
-const ONE_SECOND: number = 1000;
-
 export class Virtualo extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login";
 
     protected async logIn(request: any): Promise<string> {
-        await timingUtils.delay(ONE_SECOND * 3);
+        await timingUtils.delay(timingUtils.ONE_SECOND * 3);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
 
         const loginPostRequestOptions = {
@@ -63,7 +61,7 @@ export class Virtualo extends Bookstore {
             let nextPageUrl = pageUrls.shift();
             if (nextPageUrl != undefined) {
                 console.log(`${new Date().toISOString()} - Getting to the next page: ${nextPageUrl}`);
-                pageBody = await this.getPageBody(request, nextPageUrl, ONE_SECOND);
+                pageBody = await this.getPageBody(request, nextPageUrl, timingUtils.ONE_SECOND);
             } else {
                 pageBody = undefined;
             }
@@ -122,7 +120,7 @@ export class Virtualo extends Bookstore {
             let fileName = `${productTitle}.${downloadLink.fileType}`;
             if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
                 console.log(`${new Date().toISOString()} - Downloading ${downloadLink.fileType} file for ${productTitle}`);
-                await this.downloadFile(request, downloadLink.downloadLink, ONE_SECOND * 2, downloadDir, fileName);
+                await this.downloadFile(request, downloadLink.downloadLink, timingUtils.ONE_SECOND * 2, downloadDir, fileName);
             } else {
                 console.log(`${new Date().toISOString()} - No need to download ${downloadLink.fileType} file for ${productTitle} - file already exists`);
             }

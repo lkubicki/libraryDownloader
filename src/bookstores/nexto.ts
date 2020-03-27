@@ -8,8 +8,6 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
-const ONE_SECOND: number = 1000;
-
 export class Nexto extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login.xml";
 
@@ -39,7 +37,7 @@ export class Nexto extends Bookstore {
         const pageUrls: string[] = this.getPageUrls($, bookshelfPageBody);
         await this.downloadProductsFromPage(request, bookshelfPageBody);
         for (let shelfPageUrl of pageUrls) {
-            const pageBody = await this.getPageBody(request, shelfPageUrl, ONE_SECOND);
+            const pageBody = await this.getPageBody(request, shelfPageUrl, timingUtils.ONE_SECOND);
             await this.downloadProductsFromPage(request, pageBody);
         }
     }
@@ -184,7 +182,7 @@ export class Nexto extends Bookstore {
             console.log(`${new Date().toISOString()} - Checking if download is ready`);
             await timingUtils.delayExactly(delay);
             productStatus = await this.getProductStatus(request, fileId, fileTypeId);
-            delay = ONE_SECOND * 5;
+            delay = timingUtils.ONE_SECOND * 5;
             count++
         } while (productStatus != '3' && count < MAX_RETRY);
         if (productStatus == '3') {
@@ -196,7 +194,7 @@ export class Nexto extends Bookstore {
 
     private async callService(request: any, serviceUrlTemplate: string, fileId: string, fileTypeId: string): Promise<string> {
         const statusServiceUrl = this.prepareServiceUrl(serviceUrlTemplate, fileId, fileTypeId);
-        const productStatusResponse = await this.getPageBody(request, statusServiceUrl, ONE_SECOND, false);
+        const productStatusResponse = await this.getPageBody(request, statusServiceUrl, timingUtils.ONE_SECOND, false);
         const xmlParser = new xml2js.Parser();
         const productStatus = await xmlParser.parseStringPromise(productStatusResponse);
         return productStatus.result.int[0].replace('.0', '');

@@ -5,14 +5,14 @@ import * as FS from "fs";
 import {Bookstore} from "./bookstore";
 import {filesystemUtils} from "../utils/filesystemUtils";
 import {stringUtils} from "../utils/stringUtils";
-
-const ONE_SECOND: number = 1000;
-const PROGRAMISTA_POSITION = 1;
-const MONTH_POSITION = 2;
-const YEAR_POSITION = 3;
+import {timingUtils} from "../utils/timingUtils";
 
 export class Programista extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "/login/";
+
+    private readonly PROGRAMISTA_POSITION = 1;
+    private readonly MONTH_POSITION = 2;
+    private readonly YEAR_POSITION = 3;
 
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
@@ -85,8 +85,8 @@ export class Programista extends Bookstore {
 
     private createIssueName(elementText: string): string {
         const matchArray = elementText.match(/^(Programista) ([0-9]+)\/([0-9]+)/);
-        const monthText = matchArray[MONTH_POSITION].length > 1 ? matchArray[MONTH_POSITION] : `0${matchArray[MONTH_POSITION]}`;
-        return `${matchArray[PROGRAMISTA_POSITION]} ${matchArray[YEAR_POSITION]}-${monthText}`;
+        const monthText = ("00" + matchArray[this.MONTH_POSITION]).slice(-2);
+        return `${matchArray[this.PROGRAMISTA_POSITION]} ${matchArray[this.YEAR_POSITION]}-${monthText}`;
     }
 
     private getFileMetadata(magazineFileName: string, magazineFileUrl: string): { fileName: string, fileExtension: string, fileUrl: string } {
@@ -102,7 +102,7 @@ export class Programista extends Bookstore {
         const fileName = stringUtils.formatPathName(`${fileData.fileName}.${fileData.fileExtension}`);
 
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
-            return this.checkSizeAndDownloadFile(request, fileData.fileUrl, ONE_SECOND * 3, downloadDir, fileName);
+            return this.checkSizeAndDownloadFile(request, fileData.fileUrl, timingUtils.ONE_SECOND * 3, downloadDir, fileName);
         } else {
             console.log(`${new Date().toISOString()} - No need to download ${fileName} - already downloaded`);
         }

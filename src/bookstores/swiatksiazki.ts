@@ -5,8 +5,7 @@ import * as FS from "fs";
 import {Bookstore} from "./bookstore";
 import {filesystemUtils} from "../utils/filesystemUtils";
 import {stringUtils} from "../utils/stringUtils";
-
-const ONE_SECOND: number = 1000;
+import {timingUtils} from "../utils/timingUtils";
 
 export class SwiatKsiazki extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login";
@@ -71,7 +70,7 @@ export class SwiatKsiazki extends Bookstore {
             FS.mkdirSync(downloadDir);
         }
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, bookFileName))) {
-            return this.downloadFile(request, downloadUrl, ONE_SECOND * 2, downloadDir, bookFileName);
+            return this.downloadFile(request, downloadUrl, timingUtils.ONE_SECOND * 2, downloadDir, bookFileName);
         } else {
             console.log(`${new Date().toISOString()} - No need to download '${bookFileName} - already downloaded`);
         }

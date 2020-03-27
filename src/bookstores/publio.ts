@@ -3,11 +3,16 @@
 import * as cheerio from "cheerio";
 import * as FS from "fs";
 import {Bookstore} from "./bookstore";
-import {timingUtils} from "../utils/timingUtils";
 import {filesystemUtils} from "../utils/filesystemUtils";
 import {stringUtils} from "../utils/stringUtils";
+import {timingUtils} from "../utils/timingUtils";
 
-const ONE_SECOND: number = 1000;
+const FILE_EXTENSIONS = {
+    mp3: "zip",
+    epub: "epub",
+    mobi: "mobi",
+    pdf: "pdf",
+};
 
 export class Publio extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "logowanie";
@@ -38,7 +43,7 @@ export class Publio extends Bookstore {
         await this.downloadPublicationsFromPage(request, pageBody);
         for (let shelfPageUrl of shelfPagesLinks) {
             console.log(`${new Date().toISOString()} - Changing page to: ${shelfPageUrl}`);
-            pageBody = await this.getPageBody(request, shelfPageUrl, ONE_SECOND);
+            pageBody = await this.getPageBody(request, shelfPageUrl, timingUtils.ONE_SECOND);
             await this.downloadPublicationsFromPage(request, pageBody);
         }
     }
@@ -74,7 +79,7 @@ export class Publio extends Bookstore {
 
     private async downloadPublication(request: any, elem: string) {
         const linkUrl = this.config.mainPageUrl + elem;
-        let productPageBody: string = await this.getPageBody(request, linkUrl, ONE_SECOND);
+        let productPageBody: string = await this.getPageBody(request, linkUrl, timingUtils.ONE_SECOND);
         if (elem.indexOf('pressTitle') >= 0) {
             console.log(`${new Date().toISOString()} - Got press title - getting issues pages`)
             await this.downloadAllPublicationIssues(request, productPageBody);
@@ -107,7 +112,7 @@ export class Publio extends Bookstore {
         await this.downloadPublicationsFromPage(request, pageBody);
         for (let pageUrl of shelfPagesLinks) {
             console.log(`${new Date().toISOString()} - Changing issues page to: ${pageUrl}`);
-            pageBody = await this.getPageBody(request, pageUrl, ONE_SECOND);
+            pageBody = await this.getPageBody(request, pageUrl, timingUtils.ONE_SECOND);
             await this.downloadPublicationsFromPage(request, pageBody);
         }
     }
@@ -117,12 +122,12 @@ export class Publio extends Bookstore {
         return new Promise((resolve, reject) => {
             if (packageId) {
                 const productDownloadPartUrl = `${this.config.productDownloadTypesServiceUrl}?id=${packageId}`;
-                this.getPageBody(request, productDownloadPartUrl, ONE_SECOND)
+                this.getPageBody(request, productDownloadPartUrl, timingUtils.ONE_SECOND)
                     .then((body) => {
                         resolve(this.getDownloadLinksFromPage(body, packageId));
                     }).catch((error) => {
-                        reject(`Could not get the page: ${productDownloadPartUrl}. Error: ${error}`)
-                    });
+                    reject(`Could not get the page: ${productDownloadPartUrl}. Error: ${error}`)
+                });
             } else {
                 reject('Could not find packageId within:\n' + body);
             }
@@ -190,7 +195,7 @@ export class Publio extends Bookstore {
     private async prepareProductToDownload(request: any, packageId: string, prepareLink: string) {
         let response: Object;
         do {
-            let progressData = await this.getPageBody(request, prepareLink, ONE_SECOND);
+            let progressData = await this.getPageBody(request, prepareLink, timingUtils.ONE_SECOND);
             response = JSON.parse(progressData);
         } while (response[packageId] != 'READY');
         return new Promise((resolve, reject) => {
@@ -230,14 +235,22 @@ export class Publio extends Bookstore {
             FS.mkdirSync(downloadDir);
         }
         for (let downloadLink of downloadLinks) {
-            let fileName = `${packageTitle}.${downloadLink.fileType}`;
+            let fileName = this.prepareFileName(packageTitle, downloadLink.fileType);
             if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
                 console.log(`${new Date().toISOString()} - Downloading ${downloadLink.fileType} file for ${productMetadata.productTitle}`);
-                await this.checkSizeAndDownloadFile(request, downloadLink.downloadLink, ONE_SECOND * 2, downloadDir, fileName)
+                await this.checkSizeAndDownloadFile(request, downloadLink.downloadLink, timingUtils.ONE_SECOND * 2, downloadDir, fileName)
                 // await this.downloadPublicationPackage(request, downloadDir, fileName, downloadLink.downloadLink);
             } else {
                 console.log(`${new Date().toISOString()} - No need to download ${downloadLink.fileType} file for ${productMetadata.productTitle} - file already exists`);
             }
         }
+    }
+
+    private prepareFileName(packageTitle: string, fileType: string) {
+        let fileExtension = FILE_EXTENSIONS[fileType.toLowerCase()];
+        if (fileExtension == undefined) {
+            fileExtension = fileType;
+        }
+        return `${packageTitle}.${fileExtension}`;
     }
 }
