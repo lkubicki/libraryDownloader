@@ -140,7 +140,7 @@ export abstract class Bookstore {
                             .then((response) => resolve(response))
                             .catch((error) => reject(error));
                     } else {
-                        console.log(`${new Date().toISOString()} - Could not download ${fileName} as it has size of ${headResponse['content-length']} which is more than allowed ${this.maxFileSize}`);
+                        console.log(`${new Date().toISOString()} - Could not download ${fileName} as it has size of ${headResponse['content-length']} which is more than allowed ${this.maxFileSize}. Direct download link: ${encodeURI(downloadUrl)}`);
                         resolve();
                     }
                 }).catch((error) => {
