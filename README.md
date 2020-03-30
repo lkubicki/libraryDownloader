@@ -1,6 +1,6 @@
 # libraryDownloader
-TypeScript learning project.
-To run it, you need to have node.js and Typescript installed
+TypeScript learning project.  
+To run it, you need to have node.js and TypeScript installed.  
 This TypeScript application lets you download the ebooks you have purchased from various publishers or ebook sellers, like:
 * [Apress](https://apress.com)
 * [Ebookpoint](https://ebookpoint.pl)
@@ -13,33 +13,22 @@ This TypeScript application lets you download the ebooks you have purchased from
 * [Virtualo](https://virtualo.pl)
 * [Woblink](https://woblink.com)
 
-For each of these bookstores, there is a template file in /config folder (named _bookstoreName_.json.template), which you need to add as part of /config/bookstores.json file in order for your books to downloaded from your library. Of course, first you need to add your username and password, ie.:
-To configure Manning Publishing and Apress you need to have following configuration in your /config/bookstores.json file:
+For each of these bookstores, there is a separate configuration file in /config/bookstores folder (named _bookstoreName_.json), which contains the configuration of the module. It needs to define at least the name of the store, module and the controller class. You will need to do anything with these files only when you define a new bookstore module or modify the configuration existing one. If you only wish your books to be downloaded from the bookstore, you need to add a section in /config/bookstores.json file where you need to put the name of the module, your username and password, ie.: to configure Manning Publishing and Apress you need to have following configuration in your /config/bookstores.json file:
 ```json
 [
   {
-    "bookstoreName": "Apress",
-    "moduleName": "apress",
-    "controllerName": "Apress",
+    "name": "apress",
     "login": "MyApressLogin",
-    "password": "MySecretApressPassword",
-    "mainPageUrl": "https://www.apress.com/",
-    "bookshelfUrl": "https://www.apress.com/public/profile/bookshelf",
-    "loginFormUrl": "https://login.apress.com/public/gp/login?url=https%3A%2F%2Fwww.apress.com%2Fpublic%2Fprofile%2Fbookshelf",
-    "loginServiceUrl": "https://login.apress.com/public/gp/authenticate"
+    "password": "MySecretApressPassword"
   },
   {
-    "bookstoreName": "Manning Publications",
-    "moduleName": "manning",
-    "controllerName": "Manning",
+    "name": "manning",
     "login": "MyManningLogin",
-    "password": "MySecretManningPassword",
-    "mainPageUrl": "https://www.manning.com/",
-    "bookshelfUrl": "https://www.manning.com/dashboard",
-    "booksListUrl" : "https://www.manning.com/dashboard/getLicensesAjax?isDropboxIntegrated=&max=1000&order=purchaseDate&sort=desc&filter=all&offset=0",
-    "loginFormUrl": "https://login.manning.com/login?service=https%3A%2F%2Fwww.manning.com%2Flogin%2Fcas",
-    "loginServiceUrl": "https://login.manning.com/login?service=https%3A%2F%2Fwww.manning.com%2Flogin%2Fcas"
+    "password": "MySecretManningPassword"
   }
 ]
 ```
-If you need to configure more, than one user account for one bookstore, you have to put the section responsible for this bookstore multiple times in /config/bookstores.json.
+  
+---       
+   
+<sub>If you like the downloader, you can show your appreciation by [buying me a coffee](https://www.buymeacoffee.com/lkubicki). Thank you :)

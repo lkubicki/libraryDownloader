@@ -1,0 +1,10 @@
+{
+  "bookstoreName": "Publio",
+  "moduleName": "publio",
+  "controllerName": "Publio",
+  "mainPageUrl": "https://www.publio.pl/",
+  "bookshelfUrl": "https://www.publio.pl/klient/publikacje.html",
+  "loginFormUrl": "https://www.publio.pl/klient/logowanie.html",
+  "loginServiceUrl": "https://www.publio.pl/klient/loginCheckAction.html",
+  "productDownloadTypesServiceUrl": "https://www.publio.pl/klient/pobieranie/ajax/download-product-headers.html"
+}

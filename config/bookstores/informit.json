@@ -1,0 +1,14 @@
+{
+  "bookstoreName": "informIT",
+  "moduleName": "informit",
+  "controllerName": "InformIT",
+  "mainPageUrl": "https://www.informit.com/",
+  "mainServiceUrl": "https://memberservices.informit.com/",
+  "bookshelfUrl": "https://memberservices.informit.com/my_account/index.aspx?partner=53",
+  "bookshelfUrlAsReferer": "https://memberservices.informit.com/my_account/index.aspx",
+  "generateProductServiceUrl": "https://memberservices.informit.com/wm.asmx/Generate",
+  "productStatusServiceUrl": "https://memberservices.informit.com/wm.asmx/CheckStatus",
+  "downloadServiceUrl": "https://memberservices.informit.com/_fileFormat_.aspx?isbn=_isbn_&nid=_nid_",
+  "loginFormUrl": "https://memberservices.informit.com/my_account/login.aspx?partner=53&r=https%3a%2f%2fmemberservices.informit.com%2fmy_account%2findex.aspx%3fpartner%3d53",
+  "loginServiceUrl": "https://memberservices.informit.com/my_account/login.aspx"
+}
