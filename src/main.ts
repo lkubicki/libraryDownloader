@@ -12,10 +12,10 @@ async function getBooksFromStore(storeItem: any, cookiesDir: string, booksDir: s
 
 async function getBooksFromStores() {
     for (let storeItem of stores) {
-        const {bookstoreName, login} = storeItem;
         let storeConfig = await import("../config/bookstores/" + storeItem.name);
         storeConfig.login = storeItem.login;
         storeConfig.password = storeItem.password;
+        const {bookstoreName, login} = storeConfig;
 
         await getBooksFromStore(storeConfig, constants.cookiesDir, constants.booksDir, constants.maxFileSize)
             .then(() => console.log(`${new Date().toISOString()} - ${bookstoreName} for ${login}\t\tFinished\n`))
