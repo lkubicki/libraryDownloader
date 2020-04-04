@@ -138,6 +138,7 @@ export class PacktPub extends Bookstore {
                         reject(`Got response code ${response.statusCode} while getting access token`);
                     }
                 })
+                .catch((error) => reject(`Got error while getting access token: ${error}`))
         });
     }
 
@@ -158,15 +159,19 @@ export class PacktPub extends Bookstore {
                     bearer: accessToken
                 }
             };
-            request(bookshelfServiceUrlWithOffset, optionsRequestOptions)
-                .then((response) => {
-                    request.get(bookshelfServiceUrlWithOffset, getRequestOptions)
-                        .then((response) => {
-                            resolve(JSON.parse(response));
-                        })
-                        .catch((error) => reject(`Could not retrieve bookshelf page ${bookshelfServiceUrlWithOffset} contents: ${error}`))
-                })
-                .catch((error) => reject(`Could not retrieve bookshelf contents: ${error}`))
+            if (bookshelfServiceUrlWithOffset !== undefined || !bookshelfServiceUrlWithOffset.startsWith("http")) {
+                request(bookshelfServiceUrlWithOffset, optionsRequestOptions)
+                    .then((response) => {
+                        request.get(bookshelfServiceUrlWithOffset, getRequestOptions)
+                            .then((response) => {
+                                resolve(JSON.parse(response));
+                            })
+                            .catch((error) => reject(`Could not retrieve bookshelf page ${bookshelfServiceUrlWithOffset} contents: ${error}`))
+                    })
+                    .catch((error) => reject(`Could not retrieve bookshelf contents: ${error}`))
+            } else {
+                reject(`Incorrect bookshelf URL: ${bookshelfServiceUrlWithOffset}`)
+            }
         });
     }
 

@@ -8,5 +8,6 @@
   "typesServiceUrl": "https://services.packtpub.com/products-v1/products/{isbn}/types",
   "productDownloadServiceUrl": "https://services.packtpub.com/products-v1/products/{isbn}/files/{type}",
   "loginFormUrl": "https://account.packtpub.com/login?returnUrl=%2Faccount%2Fproducts",
-  "loginServiceUrl": "https://services.packtpub.com/auth-v1/users/tokens"
+  "loginServiceUrl": "https://services.packtpub.com/auth-v1/users/tokens",
+  "tokensServiceUrl": "https://services.packtpub.com/auth-v1/users/me/tokens"
 }
