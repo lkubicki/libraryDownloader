@@ -54,55 +54,50 @@ export class Woblink extends Bookstore {
     private async downloadPublicationsFromPage(request: any, pageBody: string) {
         const $ = cheerio.load(pageBody);
         for (let shelfBook of $('.shelf-book')) {
-            let bookData = this.getPublicationsData($, shelfBook);
-            console.log(`${new Date().toISOString()} - Found ${bookData.bookAuthorsTitle.title} - ${bookData.bookAuthorsTitle.authors}`);
-            await this.downloadPublication(request, bookData);
+            try{
+                let bookData = await this.getPublicationsData(request, $, shelfBook);
+                console.log(`${new Date().toISOString()} - Found ${bookData.bookTitle} - ${bookData.bookAuthors}`);
+                await this.downloadPublication(request, bookData);
+            } catch (error) {
+                console.log(`${new Date().toISOString()} - ${error}`);
+            }
         }
     }
 
-    private getPublicationsData($: any, shelfBook: any) {
-        let bookMetadata: { type: string, bookId: string, copyId: string, title: string } = this.getBookMetadata(shelfBook.attribs);
-        const bookDetailsNode = $('.shelf-book-details', shelfBook);
-        let bookAuthorsTitle: { authors: string, title: string } = this.getBookAuthorsAndTitle($, bookDetailsNode);
-        let bookFormats: string[] = this.getBookFormats($, bookDetailsNode);
-        return {bookMetadata, bookAuthorsTitle, bookFormats};
-    }
-
-    private getBookMetadata(attribs: any): { type: string, bookId: string, copyId: string, title: string } {
+    private async getPublicationsData(request: any, $: any, shelfBook: any) {
+        const bookId = shelfBook.attribs['data-book-id'];
+        const bookMetadataText: string = await this.getPageBody(request, this.config.metadataUrl.replace("_bookId_", bookId), timingUtils.ONE_SECOND);
+        const bookMetadataObject = JSON.parse(bookMetadataText);
+        let bookAuthors: string = this.getBookAuthors(bookMetadataObject['authors']);
+        let bookFormats: string[] = this.getBookFormats(bookMetadataObject['downloads']);
         return {
-            type: attribs['data-type'],
-            bookId: attribs['data-book-id'],
-            copyId: attribs['data-copy-id'],
-            title: attribs['data-book-title']
+            bookId: bookId,
+            copyId: bookMetadataObject.copyId,
+            bookAuthors: bookAuthors,
+            bookTitle: bookMetadataObject['title'],
+            bookFormats
         };
     }
 
-    private getBookAuthorsAndTitle($: any, bookDetails: any): { authors: string, title: string } {
-        let title = $('h3', bookDetails).text();
-        let authors = this.getBookAuthors($, bookDetails);
-        return {authors: authors, title: title};
-    }
-
-    private getBookAuthors($: any, bookDetailsNode: any): string {
-        let authors = "";
-        for (let authorData of $('a[itemprop="author"]', bookDetailsNode)) {
-            let author = authorData.children[0].data.trim();
+    private getBookAuthors(authorsData: { fullname: string, uri: string }[]): string {
+        let authors: string = "";
+        for (let authorData of authorsData) {
+            let author = authorData.fullname.trim();
             authors += `${author}, `;
         }
         return authors.replace(/, $/g, '').replace(/\s+/g, ' ');
     }
 
-    private getBookFormats($: any, bookDetailsNode: any): string[] {
-        let formatsString = "";
-        for (let formats of $('p.formats span', bookDetailsNode)) {
-            let format = formats.children[0].data.trim();
-            formatsString += `${format}, `;
+    private getBookFormats(bookFormats: any): string[] {
+        let formats = [];
+        for (let format of Object.keys(bookFormats)) {
+            formats.push(format);
         }
-        return formatsString.split(', ').filter(e => e.trim() != '');
+        return formats;
     }
 
-    private async downloadPublication(request: any, bookData: { bookFormats: string[]; bookMetadata: { type: string; bookId: string; copyId: string; title: string }; bookAuthorsTitle: { authors: string; title: string } }) {
-        const bookName: string = `${bookData.bookAuthorsTitle.title} - ${bookData.bookAuthorsTitle.authors}`
+    private async downloadPublication(request: any, bookData: { bookFormats: string[]; bookId: string; copyId: string; bookTitle: string, bookAuthors: string }) {
+        const bookName: string = `${bookData.bookTitle} - ${bookData.bookAuthors}`
         const downloadDir = `${this.booksDir}/${stringUtils.formatPathName(bookName)}`;
         if (!(await filesystemUtils.checkIfDirectoryExists(downloadDir))) {
             FS.mkdirSync(downloadDir);
@@ -110,15 +105,15 @@ export class Woblink extends Bookstore {
         for (let bookFormat of bookData.bookFormats) {
             const fileName = stringUtils.formatPathName(`${bookName}.${bookFormat}`);
             if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
-                console.log(`${new Date().toISOString()} - Generating ${bookFormat} file for: ${bookData.bookAuthorsTitle.title} - ${bookData.bookAuthorsTitle.authors}`);
-                if (await this.generatePublicationFiles(request, bookData.bookMetadata.copyId, bookFormat)) {
-                    console.log(`${new Date().toISOString()} - Generated ${bookData.bookAuthorsTitle.title} - ${bookData.bookAuthorsTitle.authors}.${bookFormat}`);
-                    await this.downloadPublicationFile(request, bookData.bookMetadata.copyId, downloadDir, fileName, bookFormat);
+                console.log(`${new Date().toISOString()} - Generating ${bookFormat} file for: ${bookData.bookTitle} - ${bookData.bookAuthors}`);
+                if (await this.generatePublicationFiles(request, bookData.copyId, bookFormat)) {
+                    console.log(`${new Date().toISOString()} - Generated ${bookData.bookTitle} - ${bookData.bookAuthors}.${bookFormat}`);
+                    await this.downloadPublicationFile(request, bookData.copyId, downloadDir, fileName, bookFormat);
                 } else {
-                    console.log(`${new Date().toISOString()} - Could not generate ${bookData.bookAuthorsTitle.title} - ${bookData.bookAuthorsTitle.authors}.${bookFormat}`);
+                    console.log(`${new Date().toISOString()} - Could not generate ${bookData.bookTitle} - ${bookData.bookAuthors}.${bookFormat}`);
                 }
             } else {
-                console.log(`${new Date().toISOString()} - No need to download ${bookFormat} file for: ${bookData.bookAuthorsTitle.title} - ${bookData.bookAuthorsTitle.authors} - file already exists`);
+                console.log(`${new Date().toISOString()} - No need to download ${bookFormat} file for: ${bookData.bookTitle} - ${bookData.bookAuthors} - file already exists`);
             }
         }
     }
@@ -128,7 +123,7 @@ export class Woblink extends Bookstore {
         let count: number = 0;
         try {
             do {
-                const response: string = await this.sendGenerateRequest(request, copyId, bookFormat);
+                const response: string = await this.sendGenerateRequest(request, copyId, bookFormat)
                 if (response != undefined) {
                     responseObject = JSON.parse(response);
                     if (!responseObject['success']) {
@@ -143,6 +138,7 @@ export class Woblink extends Bookstore {
             } while (!responseObject['ready'] && count < 10);
             return responseObject['ready'];
         } catch (error) {
+            console.log(`${new Date().toISOString()} - ${error}`);
             return false;
         }
     }

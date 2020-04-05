@@ -6,6 +6,7 @@
   "bookshelfUrl": "https://woblink.com/profile/moja-polka",
   "loginFormUrl": "https://woblink.com/logowanie",
   "loginServiceUrl": "https://woblink.com/logowanie",
-  "generateProductService": "https://woblink.com/account/item/download/status",
-  "downloadUrl": "https://woblink.com/account/item/download/ebook/_copyId_/_fileFormat_"
+  "generateProductService": "https://woblink.com/watermark/task/status",
+  "metadataUrl": "https://woblink.com/account/shelf/show-ebookpress/_bookId_",
+  "downloadUrl": "https://woblink.com/account/item/download/new_ebook/_copyId_/_fileFormat_"
 }
