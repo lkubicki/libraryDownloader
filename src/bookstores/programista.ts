@@ -85,7 +85,7 @@ export class Programista extends Bookstore {
 
     private createIssueName(elementText: string): string {
         const matchArray = elementText.match(/^(Programista) ([0-9]+)\/([0-9]+)/);
-        const monthText = ("00" + matchArray[this.MONTH_POSITION]).slice(-2);
+        const monthText = stringUtils.formatDigit(matchArray[this.MONTH_POSITION], 2);
         return `${matchArray[this.PROGRAMISTA_POSITION]} ${matchArray[this.YEAR_POSITION]}-${monthText}`;
     }
 

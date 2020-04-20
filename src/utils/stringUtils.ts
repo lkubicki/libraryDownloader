@@ -186,42 +186,35 @@ const DIACRITICS_REMOVAL_MAP = [
 ];
 
 export class stringUtils {
-    public static removeDiacritics(str: string) {
-        for (var i = 0; i < DIACRITICS_REMOVAL_MAP.length; i++) {
+    public static removeDiacritics(str: string): string {
+        for (let i = 0; i < DIACRITICS_REMOVAL_MAP.length; i++) {
             str = str.replace(DIACRITICS_REMOVAL_MAP[i].letters, DIACRITICS_REMOVAL_MAP[i].base);
         }
         return str;
     };
 
-    public static toCamelCase(str: string) {
+    public static toCamelCase(str: string): string {
         const [first, ...acc] = str.split(/\s+/);
         return first.toLowerCase() +
-            acc.map(function (x) {
-                return x.charAt(0).toUpperCase() + x.slice(1).toLowerCase()
-            }).join('');
+            acc.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join('');
     };
 
-    public static formatDigit = function (numberToFormat: number, numberOfCharacters: number) {
-        let numberAsText = undefined;
-        if (numberToFormat !== undefined) {
-            numberAsText = numberToFormat.toString();
-            let length = numberAsText.length;
-            if (length < numberOfCharacters) {
-                for (let i: number = 0; i < numberOfCharacters - length; i++) {
-                    numberAsText = '0' + numberAsText;
-                }
-            } else {
-                return numberAsText
+    public static formatDigit(numberToFormat: string, numberOfCharacters: number): string {
+        if (numberToFormat !== undefined && numberOfCharacters > 0) {
+            let leadingZeros = "";
+            for (let i: number = 0; i < numberOfCharacters; i++) {
+                leadingZeros = "0" + leadingZeros;
             }
+            return (leadingZeros + numberToFormat).slice(-numberOfCharacters)
         }
-        return numberAsText;
+        return numberToFormat;
     };
 
     public static capitalizeFirstLetter(textToCapitalize: string): string {
         if (textToCapitalize !== undefined) {
             return textToCapitalize.charAt(0).toUpperCase() + textToCapitalize.slice(1);
         }
-        return undefined;
+        return textToCapitalize;
     };
 
     public static formatPathName(name: string): string {

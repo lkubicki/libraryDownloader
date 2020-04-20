@@ -54,7 +54,7 @@ export class Woblink extends Bookstore {
     private async downloadPublicationsFromPage(request: any, pageBody: string) {
         const $ = cheerio.load(pageBody);
         for (let shelfBook of $('.shelf-book')) {
-            try{
+            try {
                 let bookData = await this.getPublicationsData(request, $, shelfBook);
                 console.log(`${new Date().toISOString()} - Found ${bookData.bookTitle} - ${bookData.bookAuthors}`);
                 await this.downloadPublication(request, bookData);
@@ -64,7 +64,7 @@ export class Woblink extends Bookstore {
         }
     }
 
-    private async getPublicationsData(request: any, $: any, shelfBook: any) {
+    private async getPublicationsData(request: any, $: any, shelfBook: any): Promise<{ bookId: string, copyId: string, bookAuthors: string, bookTitle: string, bookFormats: string[] }> {
         const bookId = shelfBook.attribs['data-book-id'];
         const bookMetadataText: string = await this.getPageBody(request, this.config.metadataUrl.replace("_bookId_", bookId), timingUtils.ONE_SECOND);
         const bookMetadataObject = JSON.parse(bookMetadataText);
@@ -75,7 +75,7 @@ export class Woblink extends Bookstore {
             copyId: bookMetadataObject.copyId,
             bookAuthors: bookAuthors,
             bookTitle: bookMetadataObject['title'],
-            bookFormats
+            bookFormats: bookFormats
         };
     }
 
@@ -162,7 +162,7 @@ export class Woblink extends Bookstore {
         });
     }
 
-    private async downloadPublicationFile(request: any, copyId: string, downloadDir: string, fileName: string, bookFormat: string) {
+    private async downloadPublicationFile(request: any, copyId: string, downloadDir: string, fileName: string, bookFormat: string): Promise<any> {
         const mapObj = {
             _copyId_: copyId,
             _fileFormat_: bookFormat.toLowerCase()
