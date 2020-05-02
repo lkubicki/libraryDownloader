@@ -1,0 +1,9 @@
+{
+  "bookstoreName": "Magazyn Programista Junior",
+  "moduleName": "programista-junior",
+  "controllerName": "ProgramistaJunior",
+  "mainPageUrl": "https://programistajr.pl/",
+  "bookshelfUrl": "https://programistajr.pl/twoje-magazyny/",
+  "loginFormUrl": "https://programistajr.pl/login/?reauth=1",
+  "loginServiceUrl": "https://programistajr.pl/login/"
+}

@@ -72,7 +72,7 @@ export class Publio extends Bookstore {
     private async downloadPublicationsFromPage(request: any, pageBody: string) {
         const $ = cheerio.load(pageBody);
         for (let element of $('.purchasedPub a.title')) {
-            console.log(`${new Date().toISOString()} - Downloading '${element.attribs['title']}'`);
+            console.log(`${new Date().toISOString()} - Getting '${element.attribs['title']}'`);
             await this.downloadPublication(request, element.attribs['href'].trim());
         }
     }
