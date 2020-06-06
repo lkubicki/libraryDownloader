@@ -144,22 +144,22 @@ export abstract class Bookstore {
                         resolve();
                     }
                 }).catch((error) => {
-                    reject(`Could not execute HEAD request for ${fileName} from url ${downloadUrl}: ${error}`);
-                });
+                reject(`Could not execute HEAD request for ${fileName} from url ${downloadUrl}: ${error}`);
+            });
         });
     }
 
-    protected async downloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string): Promise<any> {
+    protected async downloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string, doUriEncoding: boolean = true): Promise<any> {
         return new Promise((resolve, reject) => {
             console.log(`${new Date().toISOString()} - Downloading ${fileName}`);
-            let stream = request.get(encodeURI(downloadUrl))
-                .pipe(FS.createWriteStream(`${downloadDir}/${fileName}`))
-                .on('finish', () => {
-                    console.log(`${new Date().toISOString()} - ${fileName} downloaded`);
+            const fileUrl = doUriEncoding ? encodeURI(downloadUrl) : downloadUrl;
+            request.get(fileUrl)
+                .then(data => {
+                    FS.writeFileSync(`${downloadDir}/${fileName}`, data)
                     resolve();
                 })
-                .on('error', (error) => {
-                    reject(`Could not download ${fileName} from url ${downloadUrl}: ${error}`);
+                .catch((error) => {
+                    reject(`Error getting: ${fileUrl} - ${error}`);
                 });
         });
     }

@@ -85,7 +85,7 @@ export class Apress extends Bookstore {
             FS.mkdirSync(downloadDir);
         }
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, bookFileName))) {
-            await this.downloadFile(request, download.downloadLink, timingUtils.ONE_SECOND * 3, downloadDir, bookFileName);
+            await this.downloadFile(request, download.downloadLink, timingUtils.ONE_SECOND * 3, downloadDir, bookFileName, false);
         } else {
             console.log(`${new Date().toISOString()} - No need to download ${download.fileType} file for ${bookName} - file already downloaded`);
         }
