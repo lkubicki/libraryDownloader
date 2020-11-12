@@ -8,6 +8,10 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
+const FILE_EXTENSIONS = {
+    mp3: 'zip'
+};
+
 export class Ebookpoint extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "login";
 
@@ -78,15 +82,20 @@ export class Ebookpoint extends Bookstore {
         const $ = cheerio.load(bookshelfPageBody);
         for (let ebookListElement of $(ebookElementSelector)) {
             try {
-                const productMetadata: { type: string, id: string, title: string, authors: string, controlValue: string } =
-                    this.getBookMetadata($, ebookListElement);
-                console.log(`${new Date().toISOString()} - Preparing files for: ${productMetadata.title} by ${productMetadata.authors}`);
-                const generateResponse = await this.generateProduct(request, productMetadata.controlValue, productMetadata.id);
-                if (generateResponse.ready) {
-                    console.log(`${new Date().toISOString()} - Files for: ${productMetadata.title} by ${productMetadata.authors} generated. Downloading.`);
-                    await this.downloadFiles(request, productMetadata, generateResponse.fileFormats);
+                let productMetadata: { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: string[] } =
+                    await this.getBookMetadata($, ebookListElement);
+                productMetadata.fileFormats = await this.getBookFileFormats(request, productMetadata.controlValue)
+                if(productMetadata.fileFormats.length > 0) {
+                    console.log(`${new Date().toISOString()} - Found ${productMetadata.fileFormats} filetypes for: ${productMetadata.title}`);
+
+                    const bookName: string = `${productMetadata.title} - ${productMetadata.authors}`
+                    const downloadDir = await this.createProductFolder(bookName);
+                    for (let fileFormat of productMetadata.fileFormats) {
+                        console.log(`${new Date().toISOString()} - Getting ${fileFormat} file for: ${productMetadata.title} by ${productMetadata.authors}`);
+                        await this.downloadFiles(request, productMetadata, fileFormat, downloadDir);
+                    }
                 } else {
-                    console.log(`${new Date().toISOString()} - Could not prepare files for: ${productMetadata.title} by ${productMetadata.authors} - ${generateResponse.error}`);
+                    console.log(`${new Date().toISOString()} - Could not find any downloadable filetypes for: ${productMetadata.title}`);
                 }
             } catch (error) {
                 console.log(`${new Date().toISOString()} - Error getting product: ${error}`);
@@ -94,7 +103,16 @@ export class Ebookpoint extends Bookstore {
         }
     }
 
-    private getBookMetadata($: any, ebookListElement: any): { type: string, id: string, title: string, authors: string, controlValue: string } {
+    private async createProductFolder(bookName: string): Promise<string> {
+        const downloadDir = `${this.booksDir}/${stringUtils.formatPathName(bookName)}`
+            .replace('//', '/');
+        if (!(await filesystemUtils.checkIfDirectoryExists(downloadDir))) {
+            FS.mkdirSync(downloadDir);
+        }
+        return downloadDir;
+    }
+
+    private getBookMetadata($: any, ebookListElement: any): { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: string[] } {
         const CONTROL_VALUE: number = 0;
         const PRODUCT_TYPE: number = 1;
         const PRODUCT_ID = 2;
@@ -110,98 +128,25 @@ export class Ebookpoint extends Bookstore {
             id: bookElementData[PRODUCT_ID],
             title: bookTitleAndAuthors.title,
             authors: bookTitleAndAuthors.authors,
-            controlValue: bookElementData[CONTROL_VALUE]
+            controlValue: bookElementData[CONTROL_VALUE],
+            fileFormats: []
         };
     }
 
     private getBookTitleAndAuthors($: any, ebookListElement: any) {
-        let title = $("span.showModalTitle", ebookListElement)[0].children[0].data.trim();
-//        let title = $("h3.title", ebookListElement).text().trim();
-        let authors = $("p.author", ebookListElement).text().trim();
+        let title = $("span.showModalTitle", ebookListElement)[0].children[0].data.trim().replace(/\.$/g, '');
+        let authors = $("p.author", ebookListElement).text().trim().replace(/\.$/g, '');
         return {authors: authors, title: title};
     }
 
-    private async generateProduct(request: any, controlValue: string, id: string): Promise<{ ready: boolean, fileFormats: string[], error: string }> {
-        const mapObj = {
-            _bookId_: id,
-            _control_: controlValue
-        };
-        let downloadLink: string = this.config.generateProductServiceUrl.replace(/_bookId_|_control_/gi, function (matched) {
-            return mapObj[matched];
-        });
-        await this.getPageBody(request, downloadLink, timingUtils.ONE_SECOND * 5);
-        console.log(`${new Date().toISOString()} - Product preparation started`);
-        return await this.waitUntilPrepared(request, controlValue);
-    }
-
-    private async waitUntilPrepared(request: any, controlValue: string): Promise<{ ready: boolean; fileFormats: string[]; error: string }> {
-        let count: number = 0;
-        let ready: boolean = false;
-        let notHandled: boolean = false;
-        const statusLink = this.config.generateProductStatusServiceUrl.replace('_control_', controlValue);
-        const MAX_RETRY = 20;
-        try {
-            let fileFormats: string[] = [];
-            do {
-                console.log(`${new Date().toISOString()} - Waiting for files to be generated`);
-                const response: string = await this.getPageBodyWithAdditionalOptions(request, statusLink, 0, true, {encoding: null});
-                if (response != undefined) {
-                    const responseData = JSON.parse(response);
-                    if (responseData['frm'] != null) {
-                        ready = this.checkIfReady(responseData);
-                        if (ready) {
-                            fileFormats = this.getFileFormats(responseData);
-                        }
-                    } else {
-                        notHandled = true;
-                    }
-                }
-                count++;
-                if (!ready && !notHandled) {
-                    await timingUtils.delayExactly(timingUtils.ONE_SECOND * 10);
-                }
-            } while (!ready && count < MAX_RETRY && !notHandled);
-            return {
-                ready: ready,
-                fileFormats: fileFormats,
-                error: count >= MAX_RETRY ? `Gave up after asking ${MAX_RETRY} times` : ''
-            };
-        } catch (error) {
-            return {ready: false, fileFormats: [], error: error};
-        }
-    }
-
-    private checkIfReady(responseData: any): boolean {
-        let ready: boolean = true;
-        for (let fmt of responseData['frm']) {
-            ready = ready && fmt['clas'] == 'pobierz'
-        }
-        return ready;
-    }
-
-    private getFileFormats(responseData: any): string[] {
-        let formats: string[] = [];
-        for (let fmt of responseData['frm']) {
-            if (formats.indexOf(fmt['ext']) < 0) {
-                formats.push(fmt['ext']);
-            }
-        }
-        return formats;
-    }
-
-    private async downloadFiles(request: any, productMetadata: { type: string; id: string; title: string; authors: string; controlValue: string }, fileFormats: string[]) {
+    private async downloadFiles(request: any, productMetadata: { type: string; id: string; title: string; authors: string; controlValue: string }, fileFormat: string, downloadDir: string) {
         const bookName: string = `${productMetadata.title} - ${productMetadata.authors}`
-        const downloadDir = `${this.booksDir}/${stringUtils.formatPathName(bookName)}`;
-        if (!(await filesystemUtils.checkIfDirectoryExists(downloadDir))) {
-            FS.mkdirSync(downloadDir);
-        }
-        for (let fileFormat of fileFormats) {
-            const fileName = stringUtils.formatPathName(`${bookName}.${fileFormat}`);
-            if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
-                await this.checkFileSizeAndDownload(request, productMetadata.id, productMetadata.controlValue, downloadDir, fileName, fileFormat);
-            } else {
-                console.log(`${new Date().toISOString()} - No need to download ${fileFormat} file for: ${productMetadata.title} - ${productMetadata.authors} - file already exists`);
-            }
+        const fileExtension = FILE_EXTENSIONS[fileFormat] !== undefined ? FILE_EXTENSIONS[fileFormat] : fileFormat;
+        const fileName = stringUtils.formatPathName(`${bookName}.${fileExtension}`);
+        if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
+            await this.checkFileSizeAndDownload(request, productMetadata.id, productMetadata.controlValue, downloadDir, fileName, fileFormat);
+        } else {
+            console.log(`${new Date().toISOString()} - No need to download ${fileFormat} file for: ${productMetadata.title} - ${productMetadata.authors} - file already exists`);
         }
     }
 
@@ -216,5 +161,13 @@ export class Ebookpoint extends Bookstore {
         });
 
         return this.checkSizeAndDownloadFile(request, downloadLink, timingUtils.ONE_SECOND * 4, downloadDir, fileName);
+    }
+
+    private async getBookFileFormats(request: any, controlValue: string): Promise<string[]> {
+        let pageUrl: string = this.config.getBookDetailsServiceUrl.replace('_control_', controlValue);
+        let bookDetailsResponse = await this.getPageBody(request, pageUrl, timingUtils.ONE_SECOND)
+        return JSON.parse(bookDetailsResponse)['dane']['formaty']
+            .filter(format => format['status'] == 'OK')
+            .map(format => format['format_name']);
     }
 }

@@ -156,6 +156,7 @@ export abstract class Bookstore {
             request.get(fileUrl)
                 .then(data => {
                     FS.writeFileSync(`${downloadDir}/${fileName}`, data)
+                    console.log(`${new Date().toISOString()} - ${fileName} downloaded`);
                     resolve();
                 })
                 .catch((error) => {
