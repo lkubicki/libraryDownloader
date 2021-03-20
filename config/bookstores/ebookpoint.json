@@ -8,5 +8,6 @@
   "loginFormUrl": "https://ebookpoint.pl/users",
   "loginServiceUrl": "https://ebookpoint.pl/users/index.cgi",
   "getBookDetailsServiceUrl": "https://ebookpoint.pl/users/getModal.php?control=_control_",
+  "generateProductServiceUrl": "https://ebookpoint.pl/users/checkStatus.php?ident=_bookId_&format=_fileFormat_&control=_control_",
   "downloadUrl": "https://ebookpoint.pl/users/get.php?ident=_bookId_&control=_control_&format=_fileFormat_"
 }

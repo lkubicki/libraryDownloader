@@ -82,17 +82,17 @@ export class Ebookpoint extends Bookstore {
         const $ = cheerio.load(bookshelfPageBody);
         for (let ebookListElement of $(ebookElementSelector)) {
             try {
-                let productMetadata: { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: string[] } =
+                let productMetadata: { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: { format: string, status: string }[] } =
                     await this.getBookMetadata($, ebookListElement);
                 productMetadata.fileFormats = await this.getBookFileFormats(request, productMetadata.controlValue)
-                if(productMetadata.fileFormats.length > 0) {
-                    console.log(`${new Date().toISOString()} - Found ${productMetadata.fileFormats} filetypes for: ${productMetadata.title}`);
+                if (productMetadata.fileFormats.length > 0) {
+                    console.log(`${new Date().toISOString()} - Found ${productMetadata.fileFormats.map(format => format['format'])} filetypes for: ${productMetadata.title}`);
 
                     const bookName: string = `${productMetadata.title} - ${productMetadata.authors}`
                     const downloadDir = await this.createProductFolder(bookName);
                     for (let fileFormat of productMetadata.fileFormats) {
-                        console.log(`${new Date().toISOString()} - Getting ${fileFormat} file for: ${productMetadata.title} by ${productMetadata.authors}`);
-                        await this.downloadFiles(request, productMetadata, fileFormat, downloadDir);
+                        console.log(`${new Date().toISOString()} - Getting ${fileFormat['format']} file for: ${productMetadata.title} by ${productMetadata.authors}`);
+                        await this.downloadFiles(request, productMetadata, fileFormat.format, this.checkIfReady(fileFormat.status), downloadDir);
                     }
                 } else {
                     console.log(`${new Date().toISOString()} - Could not find any downloadable filetypes for: ${productMetadata.title}`);
@@ -112,7 +112,7 @@ export class Ebookpoint extends Bookstore {
         return downloadDir;
     }
 
-    private getBookMetadata($: any, ebookListElement: any): { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: string[] } {
+    private getBookMetadata($: any, ebookListElement: any): { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: { format: string, status: string }[] } {
         const CONTROL_VALUE: number = 0;
         const PRODUCT_TYPE: number = 1;
         const PRODUCT_ID = 2;
@@ -139,15 +139,74 @@ export class Ebookpoint extends Bookstore {
         return {authors: authors, title: title};
     }
 
-    private async downloadFiles(request: any, productMetadata: { type: string; id: string; title: string; authors: string; controlValue: string }, fileFormat: string, downloadDir: string) {
+    private async downloadFiles(request: any, productMetadata: { type: string; id: string; title: string; authors: string; controlValue: string }, fileFormat: string, isReady: boolean, downloadDir: string) {
         const bookName: string = `${productMetadata.title} - ${productMetadata.authors}`
         const fileExtension = FILE_EXTENSIONS[fileFormat] !== undefined ? FILE_EXTENSIONS[fileFormat] : fileFormat;
         const fileName = stringUtils.formatPathName(`${bookName}.${fileExtension}`);
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
-            await this.checkFileSizeAndDownload(request, productMetadata.id, productMetadata.controlValue, downloadDir, fileName, fileFormat);
+            let result: { ready: boolean, error: string };
+            if (!isReady) {
+                result = await this.generateProduct(request, productMetadata.id, productMetadata.controlValue, fileFormat);
+            }
+            if (result.ready) {
+                await this.checkFileSizeAndDownload(request, productMetadata.id, productMetadata.controlValue, downloadDir, fileName, fileFormat);
+            } else {
+                console.log(`${new Date().toISOString()} - Error downloading ${fileFormat} file for: ${productMetadata.title} - ${result.error}`);
+            }
         } else {
             console.log(`${new Date().toISOString()} - No need to download ${fileFormat} file for: ${productMetadata.title} - ${productMetadata.authors} - file already exists`);
         }
+    }
+
+    private async generateProduct(request: any, id: string, controlValue: string, fileFormat: string): Promise<{ ready: boolean, error: string }> {
+        const mapObj = {
+            _bookId_: id,
+            _fileFormat_: fileFormat,
+            _control_: controlValue
+        };
+        let downloadLink: string = this.config.generateProductServiceUrl.replace(/_bookId_|_control_|_fileFormat_/gi, function (matched) {
+            return mapObj[matched];
+        });
+        await this.getPageBody(request, downloadLink, timingUtils.ONE_SECOND * 5);
+        console.log(`${new Date().toISOString()} - Product preparation started`);
+        return await this.waitUntilPrepared(request, downloadLink);
+    }
+
+    private async waitUntilPrepared(request: any, statusLink: string): Promise<{ ready: boolean; fileFormats: string[]; error: string }> {
+        let count: number = 0;
+        let ready: boolean = false;
+        let notHandled: boolean = false;
+        const MAX_RETRY = 20;
+        try {
+            let fileFormats: string[] = [];
+            do {
+                console.log(`${new Date().toISOString()} - Waiting for files to be generated`);
+                const response: string = await this.getPageBodyWithAdditionalOptions(request, statusLink, 0, true, {encoding: null});
+                if (response != undefined) {
+                    const responseData = JSON.parse(response);
+                    if (responseData['status'] != null) {
+                        ready = this.checkIfReady(responseData['status']);
+                    } else {
+                        notHandled = true;
+                    }
+                }
+                count++;
+                if (!ready && !notHandled) {
+                    await timingUtils.delayExactly(timingUtils.ONE_SECOND * 10);
+                }
+            } while (!ready && count < MAX_RETRY && !notHandled);
+            return {
+                ready: ready,
+                fileFormats: fileFormats,
+                error: count >= MAX_RETRY ? `Gave up after asking ${MAX_RETRY} times` : ''
+            };
+        } catch (error) {
+            return {ready: false, fileFormats: [], error: error};
+        }
+    }
+
+    private checkIfReady(dataStatus: string): boolean {
+        return 'OK' === dataStatus;
     }
 
     private async checkFileSizeAndDownload(request: any, id: string, controlValue: string, downloadDir: string, fileName: string, fileFormat: string): Promise<any> {
@@ -163,11 +222,14 @@ export class Ebookpoint extends Bookstore {
         return this.checkSizeAndDownloadFile(request, downloadLink, timingUtils.ONE_SECOND * 4, downloadDir, fileName);
     }
 
-    private async getBookFileFormats(request: any, controlValue: string): Promise<string[]> {
+    private async getBookFileFormats(request: any, controlValue: string): Promise<{ format: string, status: string }[]> {
         let pageUrl: string = this.config.getBookDetailsServiceUrl.replace('_control_', controlValue);
         let bookDetailsResponse = await this.getPageBody(request, pageUrl, timingUtils.ONE_SECOND)
         return JSON.parse(bookDetailsResponse)['dane']['formaty']
-            .filter(format => format['status'] == 'OK')
-            .map(format => format['format_name']);
+            .map(fmt => this.mapToFormatData(fmt));
+    }
+
+    private mapToFormatData(fmt: any): { format: string, status: string } {
+        return {format: fmt['format_name'], status: fmt['status']};
     }
 }
