@@ -148,7 +148,7 @@ export class Ebookpoint extends Bookstore {
             if (!isReady) {
                 result = await this.generateProduct(request, productMetadata.id, productMetadata.controlValue, fileFormat);
             }
-            if (result.ready) {
+            if (isReady || result.ready) {
                 await this.checkFileSizeAndDownload(request, productMetadata.id, productMetadata.controlValue, downloadDir, fileName, fileFormat);
             } else {
                 console.log(`${new Date().toISOString()} - Error downloading ${fileFormat} file for: ${productMetadata.title} - ${result.error}`);
