@@ -232,4 +232,24 @@ export class Ebookpoint extends Bookstore {
     private mapToFormatData(fmt: any): { format: string, status: string } {
         return {format: fmt['format_name'], status: fmt['status']};
     }
+
+    protected async downloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string, doUriEncoding: boolean = true): Promise<any> {
+        return new Promise((resolve, reject) => {
+            console.log(`${new Date().toISOString()} - Downloading ${fileName}`);
+            const fileUrl = doUriEncoding ? encodeURI(downloadUrl) : downloadUrl;
+            const getOptions = {
+                encoding: null
+            };
+            request.get(fileUrl, getOptions)
+                .then(data => {
+                    FS.writeFileSync(`${downloadDir}/${fileName}`, data)
+                    console.log(`${new Date().toISOString()} - ${fileName} downloaded`);
+                    resolve();
+                })
+                .catch((error) => {
+                    reject(`Error getting: ${fileUrl} - ${error}`);
+                });
+        });
+    }
+
 }
