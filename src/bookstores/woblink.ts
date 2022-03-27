@@ -11,114 +11,78 @@ export class Woblink extends Bookstore {
     protected notLoggedInRedirectUrlPart: string = "logowanie";
 
     protected async logIn(request: any): Promise<string> {
-        await this.visitLoginForm(request, this.config.loginFormUrl);
+        var pageBody = await this.visitLoginForm(request, this.config.loginFormUrl);
+        var csrfToken = this.findCsrfTokenValue(pageBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
         const loginRequestOptions = {
             resolveWithFullResponse: true,
             method: "POST",
             form: {
-                login: {
-                    email: this.config.login,
-                    password: this.config.password
-                },
-                referer: this.config.bookshelfUrl
+                _username: this.config.login,
+                _password: this.config.password,
+                _go_back_to: this.config.bookshelfUrl,
+                _csrf_token: csrfToken
             }
         };
         return this.sendLoginForm(request, loginRequestOptions);
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {
-        let pageUrls: string[] = this.getPageUrls(bookshelfPageBody, this.config.mainPageUrl);
-        console.log(`${new Date().toISOString()} - Found ${pageUrls.length + 1} bookshelf ` + (pageUrls.length >= 1 ? `pages` : `page`));
-        let pageBody = bookshelfPageBody;
-        await this.downloadPublicationsFromPage(request, pageBody);
-        for (let shelfPageUrl of pageUrls) {
-            console.log(`${new Date().toISOString()} - Changing page to: ${shelfPageUrl}`);
-            pageBody = await this.getPageBody(request, shelfPageUrl, timingUtils.ONE_SECOND);
-            await this.downloadPublicationsFromPage(request, pageBody);
+        let page = 1
+        let booksList = undefined;
+        try {
+            do {
+                const pageUrl = this.config.bookshelfContentUrl.replace("_page_", page);
+                console.log(`${new Date().toISOString()} - Downloading publications from page: ${pageUrl}`);
+                booksList = JSON.parse(await this.getPageBody(request, pageUrl, 1));
+                for (let publication of booksList.publications) {
+                    let bookData = {
+                        bookDownloads: [],
+                        bookId: publication.uid,
+                        copyId: publication.copyId,
+                        bookTitle: publication.title,
+                        bookAuthors: this.getBookAuthors(publication.contributors)
+                    }
+                    for (let format of publication.format) {
+                        bookData.bookDownloads.push({fileFormat: format, downloadUrl: publication.downloads[format.toLowerCase()]})
+                    }
+                    await this.downloadPublication(request, bookData)
+                }
+                page++;
+            } while (page < booksList.totalPages)
+        } catch (error) {
+            console.log(`${new Date().toISOString()} - ${error}`);
         }
     }
 
-    private getPageUrls(pageBody: string, mainPageUrl: string): string[] {
-        let result: string[] = [];
-        const $ = cheerio.load(pageBody);
-        $('ul.pagination a').each(function (i, elem) {
-            const linkUrl = `${mainPageUrl}${elem.attribs['href']}`.replace(/([^:])[\/]+/g, "$1/");
-            if (result.indexOf(linkUrl) < 0) {
-                result.push(linkUrl);
-            }
-        });
-        return result;
+    private getBookAuthors(authors: string): string {
+        return authors.replace(/, $/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
     }
-
-    private async downloadPublicationsFromPage(request: any, pageBody: string) {
-        const $ = cheerio.load(pageBody);
-        for (let shelfBook of $('.shelf-book')) {
-            try {
-                let bookData = await this.getPublicationsData(request, $, shelfBook);
-                console.log(`${new Date().toISOString()} - Found ${bookData.bookTitle} - ${bookData.bookAuthors}`);
-                await this.downloadPublication(request, bookData);
-            } catch (error) {
-                console.log(`${new Date().toISOString()} - ${error}`);
-            }
-        }
-    }
-
-    private async getPublicationsData(request: any, $: any, shelfBook: any): Promise<{ bookId: string, copyId: string, bookAuthors: string, bookTitle: string, bookFormats: string[] }> {
-        const bookId = shelfBook.attribs['data-book-id'];
-        const bookMetadataText: string = await this.getPageBody(request, this.config.metadataUrl.replace("_bookId_", bookId), timingUtils.ONE_SECOND);
-        const bookMetadataObject = JSON.parse(bookMetadataText);
-        let bookAuthors: string = this.getBookAuthors(bookMetadataObject['authors']);
-        let bookFormats: string[] = this.getBookFormats(bookMetadataObject['downloads']);
-        return {
-            bookId: bookId,
-            copyId: bookMetadataObject.copyId,
-            bookAuthors: bookAuthors,
-            bookTitle: bookMetadataObject['title'],
-            bookFormats: bookFormats
-        };
-    }
-
-    private getBookAuthors(authorsData: { fullname: string, uri: string }[]): string {
-        let authors: string = "";
-        for (let authorData of authorsData) {
-            let author = authorData.fullname.trim();
-            authors += `${author}, `;
-        }
-        return authors.replace(/, $/g, '').replace(/\s+/g, ' ');
-    }
-
-    private getBookFormats(bookFormats: any): string[] {
-        let formats = [];
-        for (let format of Object.keys(bookFormats)) {
-            formats.push(format);
-        }
-        return formats;
-    }
-
-    private async downloadPublication(request: any, bookData: { bookFormats: string[]; bookId: string; copyId: string; bookTitle: string, bookAuthors: string }) {
+    private async downloadPublication(request: any, bookData: { bookDownloads: any[]; bookId: string; copyId: string; bookTitle: string, bookAuthors: string }) {
         const bookName: string = `${bookData.bookTitle} - ${bookData.bookAuthors}`
         const downloadDir = `${this.booksDir}/${stringUtils.formatPathName(bookName)}`;
         if (!(await filesystemUtils.checkIfDirectoryExists(downloadDir))) {
             FS.mkdirSync(downloadDir);
         }
-        for (let bookFormat of bookData.bookFormats) {
-            const fileName = stringUtils.formatPathName(`${bookName}.${bookFormat}`);
+        for (let downloadData of bookData.bookDownloads) {
+            const fileName = stringUtils.formatPathName(`${bookName}.${downloadData.fileFormat}`);
             if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
-                console.log(`${new Date().toISOString()} - Generating ${bookFormat} file for: ${bookData.bookTitle} - ${bookData.bookAuthors}`);
-                if (await this.generatePublicationFiles(request, bookData.copyId, bookFormat)) {
-                    console.log(`${new Date().toISOString()} - Generated ${bookData.bookTitle} - ${bookData.bookAuthors}.${bookFormat}`);
-                    await this.downloadPublicationFile(request, bookData.copyId, downloadDir, fileName, bookFormat);
+                console.log(`${new Date().toISOString()} - Generating ${downloadData.fileFormat} file for: ${bookData.bookTitle} - ${bookData.bookAuthors}`);
+                if (await this.generatePublicationFiles(request, bookData.copyId, downloadData.fileFormat, downloadData.downloadUrl)) {
+                    console.log(`${new Date().toISOString()} - Generated ${bookData.bookTitle} - ${bookData.bookAuthors}.${downloadData.fileFormat}`);
+                    await this.downloadPublicationFile(request, bookData.copyId, downloadDir, fileName, downloadData.fileFormat, downloadData.downloadUrl);
                 } else {
-                    console.log(`${new Date().toISOString()} - Could not generate ${bookData.bookTitle} - ${bookData.bookAuthors}.${bookFormat}`);
+                    console.log(`${new Date().toISOString()} - Could not generate ${bookData.bookTitle} - ${bookData.bookAuthors}.${downloadData.fileFormat}`);
                 }
             } else {
-                console.log(`${new Date().toISOString()} - No need to download ${bookFormat} file for: ${bookData.bookTitle} - ${bookData.bookAuthors} - file already exists`);
+                console.log(`${new Date().toISOString()} - No need to download ${downloadData.fileFormat} file for: ${bookData.bookTitle} - ${bookData.bookAuthors} - file already exists`);
             }
         }
     }
 
-    private async generatePublicationFiles(request: any, copyId: string, bookFormat: string): Promise<boolean> {
+    private async generatePublicationFiles(request: any, copyId: string, bookFormat: string, downloadUrl: String): Promise<boolean> {
         let responseObject: Object;
         let count: number = 0;
         try {
@@ -162,14 +126,21 @@ export class Woblink extends Bookstore {
         });
     }
 
-    private async downloadPublicationFile(request: any, copyId: string, downloadDir: string, fileName: string, bookFormat: string): Promise<any> {
+    private async downloadPublicationFile(request: any, copyId: string, downloadDir: string, fileName: string, bookFormat: string, downloadUrl: any): Promise<any> {
         const mapObj = {
             _copyId_: copyId,
             _fileFormat_: bookFormat.toLowerCase()
         };
+
         let downloadLink: string = this.config.downloadUrl.replace(/_copyId_|_fileFormat_/gi, function (matched) {
             return mapObj[matched];
         });
         return this.downloadFile(request, downloadLink, timingUtils.ONE_SECOND * 3, downloadDir, fileName);
+    }
+
+    private findCsrfTokenValue(pageBody: string) {
+        let $ = cheerio.load(pageBody);
+        const csrfToken = $('form.login-page__form input[name="_csrf_token"]').val();
+        return csrfToken;
     }
 }

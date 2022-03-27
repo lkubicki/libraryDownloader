@@ -4,6 +4,7 @@
   "controllerName": "Woblink",
   "mainPageUrl": "https://woblink.com/",
   "bookshelfUrl": "https://woblink.com/profile/moja-polka",
+  "bookshelfContentUrl": "https://woblink.com/account/shelf/rest?type=all&sort=purchase_date_desc&page=_page_&already_read=include&search=",
   "loginFormUrl": "https://woblink.com/logowanie",
   "loginServiceUrl": "https://woblink.com/logowanie",
   "generateProductService": "https://woblink.com/watermark/task/status",
