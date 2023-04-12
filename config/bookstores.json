@@ -1,7 +1,9 @@
-[
-  {
-    "name": "",
-    "login": "",
-    "password": ""
-  }
-]
+{
+  "stores": [
+    {
+      "name": "",
+      "login": "",
+      "password": ""
+    }
+  ]
+}

@@ -8,11 +8,11 @@ import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
 export class Woblink extends Bookstore {
-    protected notLoggedInRedirectUrlPart: string = "logowanie";
+    protected notLoggedInRedirectUrlPart = "logowanie";
 
     protected async logIn(request: any): Promise<string> {
-        var pageBody = await this.visitLoginForm(request, this.config.loginFormUrl);
-        var csrfToken = this.findCsrfTokenValue(pageBody);
+        const pageBody = await this.visitLoginForm(request, this.config.loginFormUrl);
+        const csrfToken = this.findCsrfTokenValue(pageBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
         const loginRequestOptions = {
             resolveWithFullResponse: true,
@@ -44,12 +44,15 @@ export class Woblink extends Bookstore {
                         bookAuthors: this.getBookAuthors(publication.contributors)
                     }
                     for (let format of publication.format) {
-                        bookData.bookDownloads.push({fileFormat: format, downloadUrl: publication.downloads[format.toLowerCase()]})
+                        bookData.bookDownloads.push({
+                            fileFormat: format,
+                            downloadUrl: publication.downloads[format.toLowerCase()]
+                        })
                     }
                     await this.downloadPublication(request, bookData)
                 }
                 page++;
-            } while (page < booksList.totalPages)
+            } while (page <= booksList.totalPages)
         } catch (error) {
             console.log(`${new Date().toISOString()} - ${error}`);
         }
@@ -60,6 +63,7 @@ export class Woblink extends Bookstore {
             .replace(/\s+/g, ' ')
             .trim();
     }
+
     private async downloadPublication(request: any, bookData: { bookDownloads: any[]; bookId: string; copyId: string; bookTitle: string, bookAuthors: string }) {
         const bookName: string = `${bookData.bookTitle} - ${bookData.bookAuthors}`
         const downloadDir = `${this.booksDir}/${stringUtils.formatPathName(bookName)}`;
@@ -118,7 +122,7 @@ export class Woblink extends Bookstore {
             };
             request.post(this.config.generateProductService, postRequestOptions)
                 .then((response) => {
-                    resolve(response);
+                    resolve(response.body);
                 })
                 .catch(error => {
                     reject(`Error generating ${bookFormat} file: ${error}`)
@@ -140,7 +144,6 @@ export class Woblink extends Bookstore {
 
     private findCsrfTokenValue(pageBody: string) {
         let $ = cheerio.load(pageBody);
-        const csrfToken = $('form.login-page__form input[name="_csrf_token"]').val();
-        return csrfToken;
+        return $('form.login-page__form input[name="_csrf_token"]').val();
     }
 }

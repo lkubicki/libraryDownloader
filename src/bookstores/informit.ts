@@ -9,7 +9,7 @@ import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
 export class InformIT extends Bookstore {
-    protected notLoggedInRedirectUrlPart: string = "login.aspx";
+    protected notLoggedInRedirectUrlPart = "login.aspx";
 
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
@@ -18,12 +18,15 @@ export class InformIT extends Bookstore {
         const loginRequestOptions = {
             headers: {
                 origin: this.config.mainServiceUrl,
-                referer: this.config.bookshelfUrl
+                referer: this.config.bookshelfUrlAsReferer
             },
             form: {
                 email_address: this.config.login,
                 password: this.config.password
-            }
+            },
+            followRedirect: true,
+            allowGetBody: true,
+            methodRewriting: false,
         };
 
         return this.sendLoginForm(request, loginRequestOptions);
@@ -48,7 +51,7 @@ export class InformIT extends Bookstore {
                                 if (generateResponse.ready) {
                                     console.log(`${new Date().toISOString()} - ${refreshLink.fileType} files for: ${title} generated. Downloading.`);
                                     const downloadLink = this.prepareDownloadLink(refreshLink.isbn13, refreshLink.fileType, refreshLink.nid);
-                                    await this.checkSizeAndDownloadBook(request, downloadLink, title, refreshLink.fileType);
+                                    await this.downloadBook(request, downloadLink, title, refreshLink.fileType);
                                 } else {
                                     console.log(`${new Date().toISOString()} - Could not prepare ${refreshLink.fileType} file for: ${title} - ${generateResponse.error}`);
                                 }
@@ -57,7 +60,7 @@ export class InformIT extends Bookstore {
                             }
                         }
                     } else {
-                        await this.checkSizeAndDownloadBook(request, refreshLink.downloadLink, title, refreshLink.fileType);
+                        await this.downloadBook(request, refreshLink.downloadLink, title, refreshLink.fileType);
                     }
                 }
             } catch (error) {
@@ -174,7 +177,7 @@ export class InformIT extends Bookstore {
         }
     }
 
-    private async checkSizeAndDownloadBook(request: any, downloadLink, title: string, fileFormat: string) {
+    private async downloadBook(request: any, downloadLink, title: string, fileFormat: string) {
         const bookName: string = stringUtils.formatPathName(`${title}`);
         const downloadDir = `${this.booksDir}/${bookName}`;
         if (!(await filesystemUtils.checkIfDirectoryExists(downloadDir))) {
@@ -182,7 +185,7 @@ export class InformIT extends Bookstore {
         }
         const fileName = `${bookName}.${fileFormat}`;
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
-            return this.checkSizeAndDownloadFile(request, downloadLink, timingUtils.ONE_SECOND * 3, downloadDir, fileName);
+            return this.downloadFile(request, downloadLink, timingUtils.ONE_SECOND * 3, downloadDir, fileName);
         } else {
             console.log(`${new Date().toISOString()} - No need to download ${fileFormat} file for ${bookName} - already downloaded`);
         }

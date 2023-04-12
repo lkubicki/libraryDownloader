@@ -8,7 +8,11 @@ import {stringUtils} from "../utils/stringUtils";
 import {timingUtils} from "../utils/timingUtils";
 
 export class Manning extends Bookstore {
-    protected notLoggedInRedirectUrlPart: string = "login";
+    protected FILE_EXTENSIONS = {
+        KINDLE: 'MOBI',
+    };
+
+    protected notLoggedInRedirectUrlPart = "login";
 
     protected async logIn(request: any): Promise<string> {
         let loginFormBody = await this.visitLoginForm(request, this.config.loginFormUrl);
@@ -33,10 +37,10 @@ export class Manning extends Bookstore {
 
     private getLoginFormData(body: string): { lt: string, execution: string, eventId: string } {
         let $ = cheerio.load(body);
-        const lt = $('form input[name="lt"]').val();
-        const execution = $('form input[name="execution"]').val();
-        const eventId = $('form input[name="_eventId"]').val();
-        return {lt: lt, execution: execution, eventId: eventId};
+        // const ltValue = $('form input[name="lt"]').val()[0];
+        const executionValue = $('form input[name="execution"]').val().toString();
+        const eventIdValue = $('form input[name="_eventId"]').val().toString();
+        return {lt: undefined, execution: executionValue, eventId: eventIdValue};
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {
@@ -48,33 +52,19 @@ export class Manning extends Bookstore {
             const title = $('div.product-title', productPart).text().trim();
             const meapLastUpdate = this.getMeapLastUpdate($, productPart);
             const authors = this.formatAuthors($('div.product-authorship', productPart).text());
-            const fileTypes = this.getFileTypesData($, $('div.download-selection', productPart));
-            let downloadElement = $('form.download-form', productPart)[0];
-            let input = $('input[id="productExternalId"]', productPart)[0];
-            const downloadUrl = downloadElement != undefined ? `${this.config.mainPageUrl}/${downloadElement.attribs['action']}` : undefined;
-            const externalId = input != undefined ? input.attribs['value'] : undefined;
-            const codeLink = this.getCodeSamplesUrl($, $('.links a[title="download code samples"]', productPart)[0]);
-            if (fileTypes && externalId) {
-                try {
-                    let downloadParameters = {
-                        dropbox: false,
-                        productExternalId: externalId
-                    };
-                    downloadParameters[fileTypes.downloadName] = [];
-                    for (let fileType of fileTypes.downloadTypes) {
-                        downloadParameters[fileTypes.downloadName].push(fileType.id);
-                        downloadParameters[fileType.id] = fileType.name;
-                    }
-                    let fileExtension: string = (fileTypes.downloadTypes.length > 1 ? 'zip' : fileTypes.downloadTypes[0].fileType);
-                    console.log(`${new Date().toISOString()} - Downloading '${title}' by ${authors}`);
+            const linkElements = $(".dropdown-menu a", productPart);
+            for (let linkElement of linkElements) {
+                let downloadUrl = linkElement.attribs['href'];
+                if (downloadUrl !== undefined && downloadUrl.indexOf('downloadFormat') >= 0) {
+                    let downloadFormatTextPosition = downloadUrl.indexOf('downloadFormat');
+                    const codeLink = this.getCodeSamplesUrl($, $('.links a[title="download code samples"]', productPart)[0]);
+                    const fullDownloadUrl = `${this.config.mainPageUrl}${downloadUrl}`;
+                    const fileType = downloadUrl.substring(downloadFormatTextPosition + 15);
+                    const fileExtension = this.FILE_EXTENSIONS[fileType] !== undefined ? this.FILE_EXTENSIONS[fileType] : fileType;
                     const bookName = `${title} - ${authors}`;
                     const lastUpdate = `${meapLastUpdate != "" ? " - " + meapLastUpdate : ""}`;
-                    await this.downloadProduct(request, bookName, lastUpdate, fileExtension, downloadUrl, downloadParameters, codeLink);
-                } catch (error) {
-                    console.log(`${new Date().toISOString()} - Could not download '${title}' by ${authors} - error: ${error}`);
+                    await this.downloadProduct(request, bookName, lastUpdate, fileExtension, fullDownloadUrl, codeLink)
                 }
-            } else {
-                console.log(`${new Date().toISOString()} - Could not download '${title}' by ${authors} - extenalId value not found`);
             }
         }
     }
@@ -97,8 +87,10 @@ export class Manning extends Bookstore {
     private formatAuthors(authors: string) {
         return authors.replace(' and ', ', ')
             .replace(/Foreword([s]*)/g, ' foreword$1 ')
-            .replace('With chapters selected by ', '')
-            .replace(/([,]+[\s]*)+/g, ', ')
+            .replace(/[W|w]ith chapters selected by/g, '')
+            .replace('with', ', ')
+            .replace(' and ', ', ')
+            .replace(/([\s]*[,]+[\s]*)+/g, ', ')
             .replace(/[\s]+/g, ' ')
             .trim();
     }
@@ -126,7 +118,7 @@ export class Manning extends Bookstore {
         return undefined;
     }
 
-    private async downloadProduct(request: any, bookName: string, meapLastUpdate: string, fileExtension: string, downloadUrl: string, downloadParameters: { dropbox: boolean; productExternalId: any }, codeLink: string) {
+    private async downloadProduct(request: any, bookName: string, meapLastUpdate: string, fileExtension: string, downloadUrl: string, codeLink: string) {
         const bookNameAsPath: string = stringUtils.formatPathName(bookName);
         const downloadDir: string = `${this.booksDir}/${bookNameAsPath}`;
         const bookFileName: string = `${bookNameAsPath}${meapLastUpdate}.${fileExtension}`;
@@ -135,36 +127,18 @@ export class Manning extends Bookstore {
             FS.mkdirSync(downloadDir);
         }
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, bookFileName))) {
-            await this.downloadBookFile(request, downloadDir, bookFileName, downloadUrl, downloadParameters)
+            await this.downloadFile(request, downloadUrl, timingUtils.ONE_SECOND * 3, downloadDir, bookFileName)
                 .catch((error) => console.log(`${new Date().toISOString()} - ${error}`));
         } else {
             console.log(`${new Date().toISOString()} - No need to download '${bookFileName} - already downloaded`);
         }
 
-        const codeFileName = `${bookNameAsPath}-CODE.zip`;
+        const codeFileName = `${bookNameAsPath}${meapLastUpdate}-CODE.zip`;
         if (codeLink && !(await filesystemUtils.checkIfElementExists(downloadDir, codeFileName))) {
-            await this.checkSizeAndDownloadFile(request, codeLink, timingUtils.ONE_SECOND * 3, downloadDir, codeFileName)
+            await this.downloadFile(request, codeLink, timingUtils.ONE_SECOND * 3, downloadDir, codeFileName)
                 .catch((error) => console.log(`${new Date().toISOString()} - ${error}`));
         } else {
             console.log(`${new Date().toISOString()} - No need to download code samples for '${bookName} - already downloaded`);
         }
-    }
-
-    private async downloadBookFile(request: any, downloadDir: string, fileName: string, downloadUrl: string, downloadParameters: { dropbox: boolean; productExternalId: any }) {
-        return new Promise((resolve, reject) => {
-            console.log(`${new Date().toISOString()} - Downloading ${fileName}`);
-            let postOptions = {
-                form: downloadParameters, qsStringifyOptions: {arrayFormat: 'repeat'}
-            };
-            let stream = request.post(downloadUrl, postOptions)
-                .pipe(FS.createWriteStream(`${downloadDir}/${fileName}`))
-                .on('finish', () => {
-                    console.log(`${new Date().toISOString()} - ${fileName} downloaded`);
-                    resolve();
-                })
-                .on('error', (error) => {
-                    reject(`Error getting product: ${error}`);
-                });
-        });
     }
 }

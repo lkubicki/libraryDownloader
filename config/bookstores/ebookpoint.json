@@ -2,12 +2,16 @@
   "bookstoreName": "Ebookpoint",
   "moduleName": "ebookpoint",
   "controllerName": "Ebookpoint",
+  "statusGenerated": "OK",
   "mainPageUrl": "https://ebookpoint.pl/",
+  "userIndexPageUrl": "https://ebookpoint.pl/users/index.cgi",
   "bookshelfUrl": "https://ebookpoint.pl/users/konto/biblioteka",
   "archiveUrl": "https://ebookpoint.pl/users/konto/archiwum/ebooki",
   "loginFormUrl": "https://ebookpoint.pl/users",
   "loginServiceUrl": "https://ebookpoint.pl/users/index.cgi",
+  "userDetailsServiceUrl": "https://ebookpoint.pl/users/_users.php",
   "getBookDetailsServiceUrl": "https://ebookpoint.pl/users/getModal.php?control=_control_",
   "generateProductServiceUrl": "https://ebookpoint.pl/users/checkStatus.php?ident=_bookId_&format=_fileFormat_&control=_control_",
-  "downloadUrl": "https://ebookpoint.pl/users/get.php?ident=_bookId_&control=_control_&format=_fileFormat_"
+  "downloadUrl": "https://ebookpoint.pl/users/get.php?ident=_bookId_&control=_control_&format=_fileFormat_",
+  "courseDownloadUrl": "https://ebookpoint.pl/users/get_course.php?troya=_troyaId_&control=_control_"
 }

@@ -2,13 +2,13 @@
 TypeScript learning project.  
 To run it, you need to have node.js and TypeScript installed.  
 This TypeScript application lets you download the ebooks you have purchased from various publishers or ebook sellers, like:
-* [Apress](https://apress.com)
 * [Ebookpoint](https://ebookpoint.pl)
 * [Informit](https://informit.com)
 * [Manning Publishing](https://manning.com)
 * [Nexto](https://nexto.pl)
 * [Packt Publishing](https://packtpub.com)
 * [Publio](https://publio.pl)
+* [Springer](https://springer.com)
 * [Świat Książki](https://swiatksiazki.pl)
 * [Virtualo](https://virtualo.pl)
 * [Woblink](https://woblink.com)
@@ -18,9 +18,9 @@ If you only wish your books to be downloaded from the bookstore, you need to add
 ```json
 [
   {
-    "name": "apress",
-    "login": "MyApressLogin",
-    "password": "MySecretApressPassword"
+    "name": "springer",
+    "login": "MySpringerLogin",
+    "password": "MySecretSpringerPassword"
   },
   {
     "name": "manning",

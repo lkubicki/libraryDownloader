@@ -2,9 +2,12 @@
   "bookstoreName": "Publio",
   "moduleName": "publio",
   "controllerName": "Publio",
+  "itemsPerPage": 80,
   "mainPageUrl": "https://www.publio.pl/",
   "bookshelfUrl": "https://www.publio.pl/klient/publikacje.html",
+  "bookshelfServiceUrl": "https://www.publio.pl/rest/v3/user/library/publications?itemsPerPage=80&archive=false&page=_page_",
   "loginFormUrl": "https://www.publio.pl/klient/logowanie.html",
-  "loginServiceUrl": "https://www.publio.pl/klient/loginCheckAction.html",
+  "loginServiceUrl": "https://www.publio.pl/rest/v3/user/authorization/authorize",
+  "refreshTokensService": "https://www.publio.pl/rest/v3/user/authorization/refresh-tokens",
   "productDownloadTypesServiceUrl": "https://www.publio.pl/klient/pobieranie/ajax/download-product-headers.html"
 }

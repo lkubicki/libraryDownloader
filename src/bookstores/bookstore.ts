@@ -1,12 +1,13 @@
 'use strict';
 
-import * as CookieFilestore from 'tough-cookie-filestore';
+import {FileCookieStore} from "tough-cookie-file-store";
+import {CookieJar} from "tough-cookie"
 import * as FS from "fs";
-import * as Request from "request-promise";
+import {createWriteStream} from "fs";
 import {timingUtils} from "../utils/timingUtils";
-// require('request-debug')(Request);
+import got from 'got'
 
-const constants = require('../../config/config.json');
+import * as constants from "../../config/config.json";
 
 export abstract class Bookstore {
     protected notLoggedInRedirectUrlPart: string;
@@ -16,7 +17,7 @@ export abstract class Bookstore {
     protected booksDir: string;
     protected maxFileSize: number;
 
-    constructor(bookshopConfig, cookiesDir: string, booksDir: string, maxFileSize: number) {
+    constructor(bookshopConfig: any, cookiesDir: string, booksDir: string, maxFileSize: number) {
         this.config = bookshopConfig;
         this.cookiesDir = cookiesDir;
         this.booksDir = booksDir;
@@ -25,61 +26,35 @@ export abstract class Bookstore {
     }
 
     protected prepareRequestDefaults() {
-        var cookiePath = `${this.cookiesDir}${this.config.login.replace('@', '-')}.${this.config.moduleName}.cookies.json`;
+        const cookiePath = `${this.cookiesDir}${this.config.login.replace('@', '-')}.${this.config.moduleName}.cookies.json`;
 
         if (!FS.existsSync(cookiePath)) {
             FS.closeSync(FS.openSync(cookiePath, 'w'));
         }
-        var cookieJar = Request.jar(new CookieFilestore(cookiePath));
-        var request = Request.defaults({
-            jar: cookieJar,
+        let fileCookieStore = new FileCookieStore(cookiePath);
+        let cookieJar = new CookieJar(fileCookieStore);
+        return got.extend({
             headers: {
                 'User-Agent': constants.userAgent
-            },
-            followAllRedirects: true
-        });
-        return request;
+            }
+        }).extend({cookieJar});
     }
 
     async getBooks() {
         const request = this.prepareRequestDefaults();
-        let {isLoggedIn: isLoggedIn, body: bookshelfPageBody} = await this.checkIfUserIsLoggedIn(request);
+        let {isLoggedIn: isLoggedIn, body: pageBody} = await this.checkIfUserIsLoggedIn(request);
         if (isLoggedIn) {
             console.log(`${new Date().toISOString()} - User ${this.config.login} is logged in`);
         } else {
             console.log(`${new Date().toISOString()} - User ${this.config.login} not logged in`);
-            bookshelfPageBody = await this.logIn(request);
+            pageBody = await this.logIn(request);
         }
-        await this.getProducts(request, bookshelfPageBody);
+        await this.getProducts(request, pageBody);
     }
 
-    protected async checkIfUserIsLoggedIn(request: any): Promise<{ isLoggedIn: boolean, body: string }> {
-        const getRequestOptions = {
-            resolveWithFullResponse: true
-        };
-        return new Promise((resolve, reject) => {
-            request.get(this.config.bookshelfUrl, getRequestOptions)
-                .then((response) => {
-                    resolve({
-                        isLoggedIn: (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0),
-                        body: response.body
-                    });
-                })
-                .catch((error) => {
-                    reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`)
-                });
-        });
-    }
+    protected abstract logIn(request: any): Promise<string>;
 
-    protected async visitLoginForm(request: any, loginFormUrl: string): Promise<string> {
-        const pageBody = this.getPageBody(request, loginFormUrl, 0);
-        await timingUtils.delayExactly(timingUtils.ONE_SECOND * 3);
-        return pageBody;
-    }
-
-    protected abstract async logIn(request: any): Promise<string>;
-
-    protected abstract async getProducts(request: any, bookshelfPageBody: string);
+    protected abstract getProducts(request: any, bookshelfPageBody: string);
 
     protected async getPageBody(request: any, pageUrl: string, delay: number, exactDelay: boolean = false): Promise<string> {
         if (exactDelay) {
@@ -90,7 +65,7 @@ export abstract class Bookstore {
         return new Promise((resolve, reject) => {
             request.get(pageUrl)
                 .then((response) => {
-                    resolve(response);
+                    resolve(response.body);
                 })
                 .catch((error) => {
                     console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
@@ -105,10 +80,11 @@ export abstract class Bookstore {
         } else {
             await timingUtils.delay(delay);
         }
+        // console.log(pageUrl);
         return new Promise((resolve, reject) => {
             request.get(pageUrl, additionalOptions)
                 .then((response) => {
-                    resolve(response);
+                    resolve(response.body);
                 })
                 .catch((error) => {
                     console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
@@ -131,41 +107,28 @@ export abstract class Bookstore {
         });
     }
 
-    protected async checkSizeAndDownloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string): Promise<any> {
+    protected async checkIfUserIsLoggedIn(request: any): Promise<{ isLoggedIn: boolean, body: string }> {
+        const getRequestOptions = {
+            resolveWithFullResponse: true
+        };
         return new Promise((resolve, reject) => {
-            request.head(encodeURI(downloadUrl))
-                .then((headResponse) => {
-                    if (headResponse['content-length'] != undefined && headResponse['content-length'] < this.maxFileSize) {
-                        this.downloadFile(request, downloadUrl, delay, downloadDir, fileName)
-                            .then((response) => resolve(response))
-                            .catch((error) => reject(error));
-                    } else {
-                        console.log(`${new Date().toISOString()} - Could not download ${fileName} as it has size of ${headResponse['content-length']} which is more than allowed ${this.maxFileSize}. Direct download link: ${encodeURI(downloadUrl)}`);
-                        resolve();
-                    }
-                }).catch((error) => {
-                reject(`Could not execute HEAD request for ${fileName} from url ${downloadUrl}: ${error}`);
-            });
+            request.get(this.config.bookshelfUrl, getRequestOptions)
+                .then((response) => {
+                    resolve({
+                        isLoggedIn: (response.url.indexOf(this.notLoggedInRedirectUrlPart) < 0),
+                        body: response.body
+                    });
+                })
+                .catch((error) => {
+                    reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`)
+                });
         });
     }
 
-    protected async downloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string, doUriEncoding: boolean = true): Promise<any> {
-        return new Promise((resolve, reject) => {
-            console.log(`${new Date().toISOString()} - Downloading ${fileName}`);
-            const fileUrl = doUriEncoding ? encodeURI(downloadUrl) : downloadUrl;
-            const getOptions = {
-                encoding: null
-            };
-            request.get(fileUrl, getOptions)
-                .then(data => {
-                    FS.writeFileSync(`${downloadDir}/${fileName}`, data)
-                    console.log(`${new Date().toISOString()} - ${fileName} downloaded`);
-                    resolve();
-                })
-                .catch((error) => {
-                    reject(`Error getting: ${fileUrl} - ${error}`);
-                });
-        });
+    protected async visitLoginForm(request: any, loginFormUrl: string): Promise<string> {
+        const pageBody = this.getPageBody(request, loginFormUrl, 0);
+        await timingUtils.delayExactly(timingUtils.ONE_SECOND * 3);
+        return pageBody;
     }
 
     protected sendLoginForm(request: any, postRequestOptions: object): Promise<string> {
@@ -187,6 +150,38 @@ export abstract class Bookstore {
                 .catch((error) => {
                     reject(`Could not log in as ${this.config.login}. Error: ${error}`);
                 })
+        });
+    }
+
+    protected async downloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string, doUriEncoding: boolean = true): Promise<any> {
+        return new Promise((resolve, reject) => {
+            console.log(`${new Date().toISOString()} - Started downloading ${fileName}`);
+            const fileUrl = doUriEncoding ? encodeURI(downloadUrl) : downloadUrl;
+            const downloadStream = request.stream(downloadUrl, {followRedirect: true});
+            const fileWriterStream = createWriteStream(`${downloadDir}/${fileName}`);
+            let lastPercentage = 0;
+            downloadStream
+                .on("downloadProgress", ({ transferred, total, percent }) => {
+                    const percentage = Math.round(percent * 100);
+                    if(percentage != lastPercentage) {
+                        lastPercentage = percentage;
+                        console.log(`${new Date().toISOString()} - Progress downloading "${fileName}": ${transferred}/${total} (${percentage}%)`);
+                    }
+                })
+                .on("error", (error) => {
+                    reject(`Error getting ${fileUrl}: ${error.message}`);
+                });
+
+            fileWriterStream
+                .on("error", (error) => {
+                    reject(`Could not write ${fileUrl} to system: ${error.message}`);
+                })
+                .on("finish", () => {
+                    console.log(`${new Date().toISOString()} - Finished downloading ${fileName}`);
+                    resolve(true);
+                });
+
+            downloadStream.pipe(fileWriterStream);
         });
     }
 }

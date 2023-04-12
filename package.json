@@ -1,17 +1,17 @@
 {
-  "name": "libraryDownloader",
-  "version": "1.0.0",
+  "name": "library-downloader",
+  "version": "0.2.0",
   "main": "main.js",
-  "author": "3AM software",
+  "author": "Lukasz Kubicki - 3AM software",
   "dependencies": {
-    "async": "2.5.0",
-    "cheerio": "1.0.0-rc.3",
+    "async": "2.6.4",
+    "cheerio": "1.0.0-rc.12",
+    "form-data": "4.0.0",
+    "got": "11.8.5",
     "iconv-lite": "0.5.1",
-    "request": "2.88.0",
-    "request-promise": "4.2.5",
-    "request-debug": "^0.2.0",
-    "tough-cookie-filestore": "0.0.1",
-    "xml2js": "0.4.23"
+    "tough-cookie": "4.1.2",
+    "tough-cookie-file-store": "2.0.3",
+    "xml2js": "0.5.0"
   },
   "scripts": {
     "build": "tsc",
@@ -19,7 +19,7 @@
     "full": "npm run tsc && node ./dist/main.js"
   },
   "devDependencies": {
-    "ts-node": "^8.6.2",
-    "typescript": "^3.7.4"
+    "ts-node": "8.10.2",
+    "typescript": "4.8.2"
   }
 }

@@ -1,0 +1,9 @@
+{
+  "bookstoreName": "Springer",
+  "moduleName": "springer",
+  "controllerName": "Springer",
+  "mainPageUrl": "https://library.springer.com",
+  "bookshelfUrl": "https://library.springer.com",
+  "loginFormUrl": "https://link.springer.com/signup-login?previousUrl=https%3A%2F%2Flibrary.springer.com%2Fpublic%2Fprofile%2Fbookshelf%2Fpage",
+  "loginServiceUrl": "https://link.springer.com/login"
+}

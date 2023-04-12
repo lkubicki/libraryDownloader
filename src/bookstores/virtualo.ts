@@ -8,7 +8,7 @@ import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
 export class Virtualo extends Bookstore {
-    protected notLoggedInRedirectUrlPart: string = "login";
+    protected notLoggedInRedirectUrlPart = "login";
 
     protected async logIn(request: any): Promise<string> {
         await timingUtils.delay(timingUtils.ONE_SECOND * 3);
@@ -35,7 +35,7 @@ export class Virtualo extends Bookstore {
                 .then(() => {
                     request.get(this.config.bookshelfUrl, checkLoginGetRequestOptions)
                         .then((response) => {
-                            if (response.request.uri.href.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
+                            if (response.url.indexOf(this.notLoggedInRedirectUrlPart) < 0) {
                                 console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
                                 resolve(response.body);
                             } else {
@@ -55,7 +55,7 @@ export class Virtualo extends Bookstore {
     protected async getProducts(request: any, bookshelfPageBody: string) {
         let $ = cheerio.load(bookshelfPageBody);
         const pageUrls: string[] = this.getPageUrls($, this.config.mainPageUrl, $('ul.pagination li a'));
-        var pageBody = bookshelfPageBody;
+        let pageBody = bookshelfPageBody;
         do {
             await this.getProductsFromPage(request, pageBody);
             let nextPageUrl = pageUrls.shift();
@@ -78,11 +78,10 @@ export class Virtualo extends Bookstore {
     }
 
     private async getProductsFromPage(request: any, bookshelfPageBody: string) {
-        // console.log(bookshelfPageBody);
         let $ = cheerio.load(bookshelfPageBody);
         for (let productElement of $('li.product')) {
-            const title = $('div.content.columns div.title a', productElement).text().trim();
-            const authors = this.getAuthors($, $('div.content.columns div.authors a', productElement));
+            const title = $('.content .title a', productElement).not(".reveal-modal .content .title a").text().trim();
+            const authors = this.getAuthors($, $('div.content div.authors a', productElement).not(".reveal-modal .content .authors a"));
             const downloadLinks = this.getDownloadLinks($, $('.library-downloads.downloads .buttons a', productElement), this.config.mainPageUrl);
             await this.downloadProduct(request, downloadLinks, title, authors);
         }
@@ -101,7 +100,7 @@ export class Virtualo extends Bookstore {
         let downloads: { fileType: string, downloadLink: string }[] = [];
         for (let downloadElement of downloadElements) {
             let fileType = $(downloadElement).text().trim();
-            let downloadLink = `${mainPageUrl}/${$(downloadElement)[0].attribs['href']}`;
+            let downloadLink = `${mainPageUrl}/${$(downloadElement)[0].attribs['href']}`.replace('//', '/');
             downloads.push({fileType: fileType, downloadLink: downloadLink});
         }
         return downloads;

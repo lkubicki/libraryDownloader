@@ -5,5 +5,5 @@
   "mainPageUrl": "https://www.swiatksiazki.pl/",
   "bookshelfUrl": "https://www.swiatksiazki.pl/downloadable/customer/products/",
   "loginFormUrl": "https://www.swiatksiazki.pl/customer/account/login/",
-  "loginServiceUrl": "https://www.swiatksiazki.pl/customer/account/loginPost/referer/aHR0cHM6Ly93d3cuc3dpYXRrc2lhemtpLnBsL2Rvd25sb2FkYWJsZS9jdXN0b21lci9wcm9kdWN0cy8%2C"
+  "loginServiceUrl": "https://www.swiatksiazki.pl/customer/account/loginPost/"
 }

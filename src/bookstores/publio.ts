@@ -6,6 +6,7 @@ import {Bookstore} from "./bookstore";
 import {filesystemUtils} from "../utils/filesystemUtils";
 import {stringUtils} from "../utils/stringUtils";
 import {timingUtils} from "../utils/timingUtils";
+import * as Http from "http";
 
 const FILE_EXTENSIONS = {
     mp3: "zip",
@@ -15,37 +16,79 @@ const FILE_EXTENSIONS = {
 };
 
 export class Publio extends Bookstore {
-    protected notLoggedInRedirectUrlPart: string = "logowanie";
+    protected async checkIfUserIsLoggedIn(request: any): Promise<{ isLoggedIn: boolean, body: string }> {
+        return this.checkIfUserIsAlreadyLoggedIn(request, "");
+    }
+
+    protected async checkIfUserIsAlreadyLoggedIn(request: any, accessToken: string): Promise<{ isLoggedIn: boolean, body: string }> {
+        const getRequestOptions = {
+            resolveWithFullResponse: true,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Token': `Bearer ${accessToken}`
+            },
+        };
+        return new Promise((resolve, reject) => {
+            request.get(this.config.bookshelfServiceUrl, getRequestOptions)
+                .then((response) => {
+                    resolve({
+                        isLoggedIn: true,
+                        body: response.body
+                    });
+                })
+                .catch((error) => {
+                    if (error.response.statusCode === 401) {
+                        resolve({
+                            isLoggedIn: false,
+                            body: ""
+                        });
+                    }
+                    reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`)
+                });
+        });
+    }
 
     protected async logIn(request: any): Promise<string> {
-        const loginFormBody = await this.visitLoginForm(request, this.config.loginFormUrl);
-        const csrfToken: Object = this.getCsrfTokenValue(loginFormBody);
+        await this.visitLoginForm(request, this.config.loginFormUrl);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
 
         const loginRequestOptions = {
             resolveWithFullResponse: true,
-            method: "POST",
-            form: {
-                _csrf: csrfToken['csrfToken'],
-                action: "LOGIN",
-                j_username: this.config.login,
-                j_password: this.config.password,
+            json: {
+                login: this.config.login,
+                password: this.config.password,
             }
         };
 
         return this.sendLoginForm(request, loginRequestOptions);
     }
 
-    async getProducts(request: any, bookshelfPageBody: string) {
-        const shelfPagesLinks: string[] = this.getPagesLinks(bookshelfPageBody, this.config.mainPageUrl);
-        console.log(`${new Date().toISOString()} - Found ${shelfPagesLinks.length + 1} ` + (shelfPagesLinks.length >= 1 ? `bookshelves` : `bookshelf`));
-        let pageBody = bookshelfPageBody;
-        await this.downloadPublicationsFromPage(request, pageBody);
-        for (let shelfPageUrl of shelfPagesLinks) {
-            console.log(`${new Date().toISOString()} - Changing page to: ${shelfPageUrl}`);
-            pageBody = await this.getPageBody(request, shelfPageUrl, timingUtils.ONE_SECOND);
-            await this.downloadPublicationsFromPage(request, pageBody);
-        }
+    protected sendLoginForm(request: any, postRequestOptions: object): Promise<string> {
+        return new Promise((resolve, reject) => {
+            request.post(this.config.loginServiceUrl, postRequestOptions)
+                .then((response) => {
+                    if (response.statusCode === 200) {
+                        console.log(`${new Date().toISOString()} - Logged in user ${this.config.login} in ${this.config.bookstoreName} bookstore`);
+                        resolve(JSON.parse(response.body));
+                    } else {
+                        reject(`Got response code ${response.statusCode} while logging in`);
+                    }
+                })
+                .catch((error) => {
+                    reject(`Could not log in as ${this.config.login}. Error: ${error}`);
+                })
+        });
+    }
+
+    async getProducts(request: any, loginResponse: Object) {
+        let accessToken = loginResponse['authorizationToken'];
+        let refreshToken = loginResponse['refreshToken'];
+        let pageNbr = 1;
+        let isLastPage = false;
+        do {
+            console.log(`${new Date().toISOString()} - Getting page number: ${pageNbr}`);
+            isLastPage = await this.downloadPublicationsFromPage(request, accessToken, refreshToken, pageNbr++);
+        } while (!isLastPage);
     }
 
     private getCsrfTokenValue(body: string): { csrfToken: string, csrfTokenName: string, csrfHeaderName: string } {
@@ -69,12 +112,54 @@ export class Publio extends Bookstore {
         return result;
     }
 
-    private async downloadPublicationsFromPage(request: any, pageBody: string) {
-        const $ = cheerio.load(pageBody);
-        for (let element of $('.purchasedPub a.title')) {
-            console.log(`${new Date().toISOString()} - Getting '${element.attribs['title']}'`);
-            await this.downloadPublication(request, element.attribs['href'].trim());
+    private async downloadSingleProduct(request: any, publicationId: string, itemDigest: string, formatSets: Object[]) {
+
+    }
+
+    private async getAllPublicationsDataFromPage(request: any, accessToken: string, refreshToken: string, pageNbr: number): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+                resolve(true);
+            }
+        );
+    }
+
+    private async downloadPublicationsFromPage(request: any, accessToken: string, refreshToken: string, pageNbr: number): Promise<boolean> {
+        const securityHeadersOptions = {
+            resolveWithFullResponse: true,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Token': `Bearer ${accessToken}`
+            }
         }
+        let pageUrl = this.config.bookshelfServiceUrl.replace("_page_", pageNbr);
+
+        return new Promise((resolve, reject) => {
+            this.getPageBodyWithAdditionalOptions(request, pageUrl, timingUtils.ONE_SECOND * 3, false, securityHeadersOptions)
+                .then(pageBodyString => {
+                    let pageBody = JSON.parse(pageBodyString);
+
+                    for (let publication of pageBody.items) {
+                        switch (publication.type) {
+                            case 'SINGLE':
+                                this.downloadSingleProduct(request, publication.publicationId, publication.itemDigest, publication.formatSets);
+                                break;
+                            case 'GROUP':
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                    if (this.config.itemsPerPage * pageNbr > pageBody.totalResults) {
+                        resolve(true);
+                    } else {
+                        resolve(false);
+                    }
+                })
+                .catch(error => {
+                    reject(error);
+                });
+        })
     }
 
     private async downloadPublication(request: any, elem: string) {
@@ -109,11 +194,11 @@ export class Publio extends Bookstore {
     private async downloadAllPublicationIssues(request: any, productPageBody: string) {
         const shelfPagesLinks: string[] = this.getPagesLinks(productPageBody, this.config.mainPageUrl);
         let pageBody = productPageBody;
-        await this.downloadPublicationsFromPage(request, pageBody);
+        // await this.downloadPublicationsFromPage(request, pageBody);
         for (let pageUrl of shelfPagesLinks) {
             console.log(`${new Date().toISOString()} - Changing issues page to: ${pageUrl}`);
             pageBody = await this.getPageBody(request, pageUrl, timingUtils.ONE_SECOND);
-            await this.downloadPublicationsFromPage(request, pageBody);
+            // await this.downloadPublicationsFromPage(request, pageBody);
         }
     }
 
@@ -140,16 +225,17 @@ export class Publio extends Bookstore {
         const DOWNLOAD_INFO_PATTERN = DOWNLOAD_INFO_TEXT + '.*?[0-9]+';
 
         for (let script of $('script')) {
-            if (script.children[0] != undefined && script.children[0].data != undefined) {
-                let regexp = new RegExp(DOWNLOAD_INFO_PATTERN);
-                let matched = script.children[0].data.search(regexp);
-                if (matched >= 0) {
-                    const endOfLineIndex = script.children[0].data.indexOf('\n', matched);
-                    const returnDownloadInfoId = script.children[0].data.substring(matched, endOfLineIndex);
-                    return returnDownloadInfoId.replace(DOWNLOAD_INFO_TEXT, '').trim();
-                }
-            }
+            // if (script.children[0] != undefined && script.children[0].data != undefined) {
+            //     let regexp = new RegExp(DOWNLOAD_INFO_PATTERN);
+            //     let matched = script.children[0].data.search(regexp);
+            //     if (matched >= 0) {
+            //         const endOfLineIndex = script.children[0].data.indexOf('\n', matched);
+            //         const returnDownloadInfoId = script.children[0].data.substring(matched, endOfLineIndex);
+            //         return returnDownloadInfoId.replace(DOWNLOAD_INFO_TEXT, '').trim();
+            //     }
+            // }
         }
+        return ""
     }
 
     private getAvailableTypes(packageItemRadiobuttons: any): number[] {
@@ -199,7 +285,7 @@ export class Publio extends Bookstore {
             response = JSON.parse(progressData);
         } while (response[packageId] != 'READY');
         return new Promise((resolve, reject) => {
-            resolve();
+            resolve(true);
         });
     }
 
@@ -238,7 +324,7 @@ export class Publio extends Bookstore {
             let fileName = this.prepareFileName(packageTitle, downloadLink.fileType);
             if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
                 console.log(`${new Date().toISOString()} - Downloading ${downloadLink.fileType} file for ${productMetadata.productTitle}`);
-                await this.checkSizeAndDownloadFile(request, downloadLink.downloadLink, timingUtils.ONE_SECOND * 2, downloadDir, fileName)
+                await this.downloadFile(request, downloadLink.downloadLink, timingUtils.ONE_SECOND * 2, downloadDir, fileName)
                 // await this.downloadPublicationPackage(request, downloadDir, fileName, downloadLink.downloadLink);
             } else {
                 console.log(`${new Date().toISOString()} - No need to download ${downloadLink.fileType} file for ${productMetadata.productTitle} - file already exists`);

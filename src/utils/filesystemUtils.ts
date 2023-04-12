@@ -8,6 +8,7 @@ export class filesystemUtils {
     }
 
     public static async checkIfElementExists(downloadDirectory: string, fileName: string): Promise<boolean> {
-        return FS.existsSync(`${downloadDirectory}/${fileName}`);
+        const path = `${downloadDirectory}/${fileName}`;
+        return FS.existsSync(path) && FS.statSync(path).size > 0;
     }
 }

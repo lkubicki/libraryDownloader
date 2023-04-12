@@ -5,6 +5,7 @@ import {Bookstore} from "./bookstore";
 import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
+import {createWriteStream} from "fs";
 
 const FILE_EXTENSIONS = {
     code: "code.zip",
@@ -65,29 +66,15 @@ export class PacktPub extends Bookstore {
         if (!elementExists) {
             await timingUtils.delay(timingUtils.ONE_SECOND);
             const bookDownloadableUrl: string = await this.getDownloadUrl(request, this.config.productDownloadServiceUrl, accessToken, bookMetadata['productId'], downloadableItemType);
-            await this.downloadBookshelfItemFile(request, bookDownloadableUrl, accessToken, downloadDirectory, fileName)
+            await this.downloadElement(request, bookDownloadableUrl, accessToken, downloadDirectory, fileName)
                 .catch((error) => console.log(`${new Date().toISOString()} - ${error}`));
         } else {
             console.log(`${new Date().toISOString()} - ${fileName} already downloaded`);
         }
     }
 
-    private async downloadBookshelfItemFile(request, bookDownloadableUrl: string, accessToken: Object, downloadDirectory: string, fileName: string) {
-        console.log(`${new Date().toISOString()} - Checking size of ${fileName}`);
-        var elementSize = await this.getElementSize(request, bookDownloadableUrl, accessToken);
-        if (elementSize.fileSize <= this.maxFileSize) {
-            await this.downloadElement(request, bookDownloadableUrl, accessToken, downloadDirectory, fileName);
-        } else {
-            console.log(`${new Date().toISOString()} - Could not download ${fileName} as it has size of ${elementSize.fileSize} which is more than allowed ${this.maxFileSize}. Download link: ${bookDownloadableUrl}`);
-        }
-    }
-
     protected async logIn(request): Promise<string> {
         return new Promise((resolve, reject) => {
-            const optionsRequestOptions = {
-                resolveWithFullResponse: true,
-                method: 'OPTIONS'
-            };
             const postRequestOptions = {
                 headers: {
                     'Content-Type': 'application/json'
@@ -98,21 +85,17 @@ export class PacktPub extends Bookstore {
                     password: this.config.password
                 }
             };
-            request(this.config.loginServiceUrl, optionsRequestOptions)
+            request.post(this.config.loginServiceUrl, postRequestOptions)
                 .then((response) => {
-                    request.post(this.config.loginServiceUrl, postRequestOptions)
-                        .then((response) => {
-                            if (response.statusCode === 200) {
-                                console.log(`${new Date().toISOString()} - Logged in user ${this.config.login} in ${this.config.bookstoreName} bookstore`);
-                                resolve(response.body);
-                            } else {
-                                reject(`Got response code ${response.statusCode} while getting access token`);
-                            }
-                        })
-                })
-                .catch((error) => {
-                    reject(`Could not log in as ${this.config.login}. Error: ${error}`);
-                })
+                    if (response.statusCode === 200) {
+                        console.log(`${new Date().toISOString()} - Logged in user ${this.config.login} in ${this.config.bookstoreName} bookstore`);
+                        resolve(JSON.parse(response.body));
+                    } else {
+                        reject(`Got response code ${response.statusCode} while getting access token`);
+                    }
+                }).catch((error) => {
+                reject(`Could not log in as ${this.config.login}. Error: ${error}`);
+            })
         });
     }
 
@@ -120,20 +103,19 @@ export class PacktPub extends Bookstore {
         return new Promise((resolve, reject) => {
             const postRequestOptions = {
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
                 },
                 resolveWithFullResponse: true,
                 json: {
                     refresh: refreshToken
-                },
-                auth: {
-                    bearer: accessToken
                 }
             };
             request.post(this.config.tokensServiceUrl, postRequestOptions)
                 .then((response) => {
                     if (response.statusCode === 200) {
-                        resolve({refresh: response.body.data.refresh, access: response.body.data.access});
+                        const responseData = JSON.parse(response.body)
+                        resolve({refresh: responseData.data.refresh, access: responseData.data.access});
                     } else {
                         reject(`Got response code ${response.statusCode} while getting access token`);
                     }
@@ -146,29 +128,22 @@ export class PacktPub extends Bookstore {
         console.log(`${new Date().toISOString()} - Getting list of books starting from offset ${offset}`);
         const bookshelfServiceUrlWithOffset = bookshelfServiceUrl.replace('{offset}', offset.toString());
         return new Promise((resolve, reject) => {
-            const optionsRequestOptions = {
-                resolveWithFullResponse: true, method: 'OPTIONS'
-            };
             const getRequestOptions = {
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Connection': 'keep-alive'
-                },
-                auth: {
-                    bearer: accessToken
+                    // 'Content-Type': 'application/json',
+                    'Accept': '*.*',
+                    'Connection': 'keep-alive',
+                    'Authorization': `Bearer ${accessToken}`
                 }
             };
             if (bookshelfServiceUrlWithOffset !== undefined || !bookshelfServiceUrlWithOffset.startsWith("http")) {
-                request(bookshelfServiceUrlWithOffset, optionsRequestOptions)
+                request.get(bookshelfServiceUrlWithOffset, getRequestOptions)
                     .then((response) => {
-                        request.get(bookshelfServiceUrlWithOffset, getRequestOptions)
-                            .then((response) => {
-                                resolve(JSON.parse(response));
-                            })
-                            .catch((error) => reject(`Could not retrieve bookshelf page ${bookshelfServiceUrlWithOffset} contents: ${error}`))
+                        resolve(JSON.parse(response.body));
                     })
-                    .catch((error) => reject(`Could not retrieve bookshelf contents: ${error}`))
+                    .catch((error) =>
+                        reject(`Could not retrieve bookshelf page ${bookshelfServiceUrlWithOffset} contents: ${error}`)
+                    )
             } else {
                 reject(`Incorrect bookshelf URL: ${bookshelfServiceUrlWithOffset}`)
             }
@@ -179,23 +154,22 @@ export class PacktPub extends Bookstore {
         const typesServiceWithIsbn = typesServiceUrl.replace('{isbn}', isbn);
         return new Promise((resolve, reject) => {
             const optionsRequestOptions = {
-                resolveWithFullResponse: true, method: 'OPTIONS'
+                resolveWithFullResponse: true,
+                method: 'OPTIONS'
             };
             const getRequestOptions = {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'Connection': 'keep-alive'
-                },
-                auth: {
-                    bearer: accessToken
+                    'Connection': 'keep-alive',
+                    'Authorization': `Bearer ${accessToken}`
                 }
             };
             request(typesServiceWithIsbn, optionsRequestOptions)
                 .then((response) => {
                     request.get(typesServiceWithIsbn, getRequestOptions)
                         .then((response) => {
-                            resolve(JSON.parse(response)['data'][0]);
+                            resolve(JSON.parse(response.body)['data'][0]);
                         })
                         .catch((error) => {
                             reject(`Could not get filetypes for ${isbn}: ${error}`)
@@ -214,54 +188,25 @@ export class PacktPub extends Bookstore {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'Connection': 'keep-alive'
-                },
-                auth: {
-                    bearer: accessToken
+                    'Connection': 'keep-alive',
+                    'Authorization': `Bearer ${accessToken}`
                 }
             };
             request(downloadServiceUrl, optionsRequestOptions)
                 .then((response) => {
                     request.get(downloadServiceUrl, getRequestOptions)
                         .then((response) => {
-                            resolve(JSON.parse(response)['data']);
+                            resolve(JSON.parse(response.body)['data']);
                         })
                         .catch(error => reject(`Could not get download url for ${fileType} file for ${isbn}: ${error}`));
                 })
         });
     }
 
-    private async getElementSize(request: any,
-                                 downloadUrl: string,
-                                 accessToken: Object): Promise<{ fileSize: number }> {
-        return new Promise((resolve, reject) => {
-            const getRequestOptions = {
-                resolveWithFullResponse: true,
-                headers: {
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Referer': 'https://account.packtpub.com/account/products',
-                    'Origin': 'https://account.packtpub.com',
-                    'TE': 'Trailers',
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache',
-                    'Connection': 'keep-alive'
-                },
-                auth: {
-                    bearer: accessToken
-                }
-            };
-            request.head(downloadUrl, getRequestOptions)
-                .then((response) => {
-                    resolve({fileSize: response.headers['content-length']});
-                })
-                .catch(error => reject(`Could not get file size for ${downloadUrl}: ${error}`));
-        });
-    }
-
     private async downloadElement(request: any,
                                   downloadUrl: string,
                                   accessToken: Object,
-                                  bookDir: string,
+                                  downloadDir: string,
                                   fileName: string) {
         console.log(`${new Date().toISOString()} - Downloading ${fileName}`);
 
@@ -275,21 +220,27 @@ export class PacktPub extends Bookstore {
                     'Cache-Control': 'no-cache',
                     'Pragma': 'no-cache',
                     'Connection': 'keep-alive',
-                    'Method': 'GET'
-                },
-                auth: {
-                    bearer: accessToken
+                    'Method': 'GET',
+                    'Authorization': `Bearer ${accessToken}`
                 }
             };
-            let stream = request(downloadUrl, getRequestOptions)
-                .pipe(FS.createWriteStream(`${bookDir}/${fileName}`))
-                .on('finish', () => {
-                    console.log(`${new Date().toISOString()} - ${fileName} downloaded`);
-                    resolve();
-                })
-                .on('error', (error) => {
-                    reject(`Could not download ${fileName}: ${error}`);
+            const downloadStream = request.stream(downloadUrl, {followRedirect: true});
+            const fileWriterStream = createWriteStream(`${downloadDir}/${fileName}`);
+            downloadStream
+                .on("error", (error) => {
+                    reject(`Error getting ${downloadUrl}: ${error.message}`);
                 });
+
+            fileWriterStream
+                .on("error", (error) => {
+                    reject(`Could not write ${downloadUrl} to system: ${error.message}`);
+                })
+                .on("finish", () => {
+                    console.log(`${new Date().toISOString()} - Finished downloading ${fileName}`);
+                    resolve(true);
+                });
+
+            downloadStream.pipe(fileWriterStream);
         });
     }
 }

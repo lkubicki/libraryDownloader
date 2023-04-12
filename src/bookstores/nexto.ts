@@ -9,7 +9,7 @@ import {timingUtils} from "../utils/timingUtils";
 import {stringUtils} from "../utils/stringUtils";
 
 export class Nexto extends Bookstore {
-    protected notLoggedInRedirectUrlPart: string = "login.xml";
+    protected notLoggedInRedirectUrlPart = "login.xml";
 
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
@@ -141,7 +141,7 @@ export class Nexto extends Bookstore {
             FS.mkdirSync(downloadDir);
         }
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, bookFileName))) {
-            return this.checkSizeAndDownloadFile(request, downloadUrl, 0, downloadDir, bookFileName);
+            return this.downloadFile(request, downloadUrl, timingUtils.ONE_SECOND *3, downloadDir, bookFileName);
         } else {
             console.log(`${new Date().toISOString()} - No need to download ${fileExtension} file for ${bookName} - already downloaded`);
         }

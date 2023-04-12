@@ -8,11 +8,16 @@ import {stringUtils} from "../utils/stringUtils";
 import {timingUtils} from "../utils/timingUtils";
 
 export class Programista extends Bookstore {
-    protected notLoggedInRedirectUrlPart: string = "/login/";
+    protected notLoggedInRedirectUrlPart = "/login/";
 
     private readonly PROGRAMISTA_POSITION = 1;
     private readonly MONTH_POSITION = 2;
     private readonly YEAR_POSITION = 3;
+
+    protected readonly LOGIN_REDIRECT_PAGE: string = "https://programistamag.pl/wp-admin/";
+    protected readonly ISSUE_REGEXP = /^Programista [0-9]+\/[0-9]+/;
+    protected readonly ISSUE_NBR_REGEXP = /^(Programista) ([0-9]+)\/([0-9]+)/;
+
 
     protected async logIn(request: any): Promise<string> {
         await this.visitLoginForm(request, this.config.loginFormUrl);
@@ -24,11 +29,12 @@ export class Programista extends Bookstore {
                     _wp_original_http_referer: this.config.mainPageUrl,
                     log: this.config.login,
                     pwd: this.config.password,
-                    "wp-submit": "Zaloguj+się",
-                    redirect_to: "https://programistamag.pl/wp-admin/",
+                    "wp-submit": "Zaloguj się",
+                    redirect_to: this.LOGIN_REDIRECT_PAGE,
                     instance: "",
                     action: "login"
-                }
+                },
+            followRedirect: false
         };
         return this.sendLoginForm(request, loginRequestOptions);
     }
@@ -70,7 +76,7 @@ export class Programista extends Bookstore {
         for (let element of $("tr td a", magazineElement)) {
             try {
                 const elementText = $(element).text().trim();
-                if (/^Programista [0-9]+\/[0-9]+/.test(elementText)) {
+                if (this.ISSUE_REGEXP.test(elementText)) {
                     return {
                         oldName: elementText.replace(/PDF|EPUB|MOBI|AZW3|Single|Double|page|[\s]+/gi, ' ').trim(),
                         correctedName: this.createIssueName(elementText)
@@ -84,7 +90,7 @@ export class Programista extends Bookstore {
     }
 
     private createIssueName(elementText: string): string {
-        const matchArray = elementText.match(/^(Programista) ([0-9]+)\/([0-9]+)/);
+        const matchArray = elementText.match(this.ISSUE_NBR_REGEXP);
         const monthText = stringUtils.formatDigit(matchArray[this.MONTH_POSITION], 2);
         return `${matchArray[this.PROGRAMISTA_POSITION]} ${matchArray[this.YEAR_POSITION]}-${monthText}`;
     }
@@ -102,7 +108,7 @@ export class Programista extends Bookstore {
         const fileName = stringUtils.formatPathName(`${fileData.fileName}.${fileData.fileExtension}`);
 
         if (!(await filesystemUtils.checkIfElementExists(downloadDir, fileName))) {
-            return this.checkSizeAndDownloadFile(request, fileData.fileUrl, timingUtils.ONE_SECOND * 3, downloadDir, fileName);
+            return this.downloadFile(request, fileData.fileUrl, timingUtils.ONE_SECOND * 3, downloadDir, fileName);
         } else {
             console.log(`${new Date().toISOString()} - No need to download ${fileName} - already downloaded`);
         }

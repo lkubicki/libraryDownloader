@@ -8,23 +8,22 @@ import {stringUtils} from "../utils/stringUtils";
 import {timingUtils} from "../utils/timingUtils";
 
 export class SwiatKsiazki extends Bookstore {
-    protected notLoggedInRedirectUrlPart: string = "login";
+    protected notLoggedInRedirectUrlPart = "login";
 
     protected async logIn(request: any): Promise<string> {
         let loginFormBody: string = await this.visitLoginForm(request, this.config.loginFormUrl);
-        let formKey: string = await this.getLoginFormData(loginFormBody);
+        let formKey: string = this.getLoginFormData(loginFormBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
 
         const loginRequestOptions = {
             resolveWithFullResponse: true,
             form: {
-                form_key: formKey,
-                login: {
-                    username: this.config.login,
-                    password: this.config.password,
-                },
-                send: null
-            }
+                "form_key": formKey,
+                "login[username]": this.config.login,
+                "login[password]": this.config.password,
+                "send": null
+            },
+            followRedirect: false
         };
 
         return this.sendLoginForm(request, loginRequestOptions);
@@ -32,7 +31,7 @@ export class SwiatKsiazki extends Bookstore {
 
     private getLoginFormData(body: string): string {
         let $ = cheerio.load(body);
-        return $('form.form-login input[name="form_key"]').val();
+        return $('form.form-login input[name="form_key"]').val().toString().trim();
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {
