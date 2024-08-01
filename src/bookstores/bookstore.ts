@@ -1,7 +1,7 @@
 'use strict';
 
 import {FileCookieStore} from "tough-cookie-file-store";
-import {CookieJar} from "tough-cookie"
+import {CookieJar, Cookie} from "tough-cookie"
 import * as FS from "fs";
 import {createWriteStream} from "fs";
 import {timingUtils} from "../utils/timingUtils";
@@ -16,6 +16,8 @@ export abstract class Bookstore {
     protected cookiesDir: string;
     protected booksDir: string;
     protected maxFileSize: number;
+    protected logRequests = false;
+    protected cookieJar: CookieJar;
 
     constructor(bookshopConfig: any, cookiesDir: string, booksDir: string, maxFileSize: number) {
         this.config = bookshopConfig;
@@ -32,7 +34,8 @@ export abstract class Bookstore {
             FS.closeSync(FS.openSync(cookiePath, 'w'));
         }
         let fileCookieStore = new FileCookieStore(cookiePath);
-        let cookieJar = new CookieJar(fileCookieStore);
+        this.cookieJar = new CookieJar(fileCookieStore);
+        let cookieJar = this.cookieJar;
         return got.extend({
             headers: {
                 'User-Agent': constants.userAgent
@@ -109,7 +112,8 @@ export abstract class Bookstore {
 
     protected async checkIfUserIsLoggedIn(request: any): Promise<{ isLoggedIn: boolean, body: string }> {
         const getRequestOptions = {
-            resolveWithFullResponse: true
+            resolveWithFullResponse: true,
+            maxRedirects: 15
         };
         return new Promise((resolve, reject) => {
             request.get(this.config.bookshelfUrl, getRequestOptions)
@@ -125,6 +129,12 @@ export abstract class Bookstore {
         });
     }
 
+    protected async visitBookshelf(request: any, bookshelfUrl: string): Promise<string> {
+        const pageBody = this.getPageBody(request, bookshelfUrl, 0);
+        await timingUtils.delayExactly(timingUtils.ONE_SECOND * 3);
+        return pageBody;
+    }
+
     protected async visitLoginForm(request: any, loginFormUrl: string): Promise<string> {
         const pageBody = this.getPageBody(request, loginFormUrl, 0);
         await timingUtils.delayExactly(timingUtils.ONE_SECOND * 3);
@@ -132,8 +142,12 @@ export abstract class Bookstore {
     }
 
     protected sendLoginForm(request: any, postRequestOptions: object): Promise<string> {
+        return this.sendLoginFormAtUrl(request, this.config.loginServiceUrl, postRequestOptions);
+    }
+
+    protected sendLoginFormAtUrl(request: any, loginUrl: string, postRequestOptions: object): Promise<string> {
         return new Promise((resolve, reject) => {
-            request.post(this.config.loginServiceUrl, postRequestOptions)
+            request.post(loginUrl, postRequestOptions)
                 .then((response) => {
                     this.checkIfUserIsLoggedIn(request)
                         .then((checkResult) => {
@@ -161,9 +175,9 @@ export abstract class Bookstore {
             const fileWriterStream = createWriteStream(`${downloadDir}/${fileName}`);
             let lastPercentage = 0;
             downloadStream
-                .on("downloadProgress", ({ transferred, total, percent }) => {
+                .on("downloadProgress", ({transferred, total, percent}) => {
                     const percentage = Math.round(percent * 100);
-                    if(percentage != lastPercentage) {
+                    if (percentage != lastPercentage) {
                         lastPercentage = percentage;
                         console.log(`${new Date().toISOString()} - Progress downloading "${fileName}": ${transferred}/${total} (${percentage}%)`);
                     }
