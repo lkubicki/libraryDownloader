@@ -47,7 +47,7 @@ export class Nexto extends Bookstore {
         for (let productPart of $('#library tbody tr')) {
             const title: string = this.getTitle($, productPart);
             const authors: string = this.getAuthors($, productPart);
-            const downloadData: { fileType: string, downloadLink: string }[] = this.getDownloadData($, $('.download_td a.link-download-a', productPart));
+            const downloadData: { fileType: string, downloadLink: string }[] = this.getDownloadData($, $('.download_td .link-download-wrapper a.link-download-a', productPart));
             const bookName = `${title} - ${authors}`;
             for (let download of downloadData) {
                 const fileName = stringUtils.formatPathName(`${title} - ${authors}`);

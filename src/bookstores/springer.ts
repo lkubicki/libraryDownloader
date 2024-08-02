@@ -14,8 +14,8 @@ export class Springer extends Bookstore {
             await this.visitBookshelf(request, this.config.bookshelfUrl);
         await timingUtils.delay(timingUtils.ONE_SECOND);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-        let usernameFormRespone = await this.sendForm(request, 'email', loginFormPageBody, 'form-email-submit', {"user_id": this.config.login});
-        let passwordFormRespone = await this.sendForm(request, 'password', usernameFormRespone, 'form-password-submit', {"passwd": this.config.password});
+        let usernameFormResponse = await this.sendForm(request, 'email', loginFormPageBody, 'form-email-submit', {"user_id": this.config.login});
+        let passwordFormResponse = await this.sendForm(request, 'password', usernameFormResponse, 'form-password-submit', {"passwd": this.config.password});
 
         return new Promise((resolve, reject) => {
             this.checkIfUserIsLoggedIn(request)
