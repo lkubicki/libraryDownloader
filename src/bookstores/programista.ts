@@ -95,12 +95,12 @@ export class Programista extends Bookstore {
         return `${matchArray[this.PROGRAMISTA_POSITION]} ${matchArray[this.YEAR_POSITION]}-${monthText}`;
     }
 
-    private getFileMetadata(magazineFileName: string, magazineFileUrl: string): { fileName: string, fileExtension: string, fileUrl: string } {
-        let fileExtension = magazineFileUrl.match(/[a-zA-Z0-9]+$/)[0];
+    protected getFileMetadata(magazineFileName: string, magazineFileUrl: string): { fileName: string, fileExtension: string, fileUrl: string } {
+        let fileExtension = magazineFileName.match(/[A-Z]+$/)[0];
         return {
             fileExtension: fileExtension,
             fileName: magazineFileName.replace(fileExtension.toUpperCase(), '').replace(/[\s]+/gi, ' ').replace(/[\s]+$/gi, ''),
-            fileUrl: magazineFileUrl
+            fileUrl: (this.config.mainPageUrl + magazineFileUrl).replace('//','/')
         };
     }
 
