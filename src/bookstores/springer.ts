@@ -14,21 +14,8 @@ export class Springer extends Bookstore {
             await this.visitBookshelf(request, this.config.bookshelfUrl);
         await timingUtils.delay(timingUtils.ONE_SECOND);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
-
-        let loginData = this.findLoginData(loginFormPageBody, 'form-email-submit');
-        loginData.set("user_id", this.config.login);
-        const loginRequestOptions = this.prepareLoginFormData(loginData);
-        await timingUtils.delay(timingUtils.ONE_SECOND * 3);
-        let loginUrl = this.config.loginHost + loginData.get('actionUrl');
-        console.log(`${new Date().toISOString()} - Sending email form`);
-        let usernameFormRespone = await this.sendLoginFormAtUrl(request, loginUrl, loginRequestOptions);
-
-        let loginPasswordFormData = this.findLoginData(usernameFormRespone, 'form-password-submit');
-        loginPasswordFormData.set("password", this.config.password);
-        const loginPasswordRequestOptions = this.preparePasswordFormData(loginPasswordFormData);
-        let passwordUrl = this.config.loginHost + loginPasswordFormData.get('actionUrl');
-        console.log(`${new Date().toISOString()} - Sending password form`);
-        let passwordFormResponse = await this.sendLoginFormAtUrl(request, passwordUrl, loginPasswordRequestOptions)
+        let usernameFormRespone = await this.sendForm(request, 'email', loginFormPageBody, 'form-email-submit', {"user_id": this.config.login});
+        let passwordFormRespone = await this.sendForm(request, 'password', usernameFormRespone, 'form-password-submit', {"passwd": this.config.password});
 
         return new Promise((resolve, reject) => {
             this.checkIfUserIsLoggedIn(request)
@@ -45,36 +32,48 @@ export class Springer extends Bookstore {
         })
     }
 
-    private preparePasswordFormData(loginData: Map<string, string>) {
-        const loginPasswordRequestOptions = {
-            contentType: 'application/x-www-form-urlencoded',
-            resolveWithFullResponse: true,
-            followRedirect: true,
-            allowGetBody: true,
-            methodRewriting: false,
-            form: {
-                passwd: loginData.get("password"),
-                responseType: loginData.get("responseType"),
-                prefilledUserId: "",
-                _csrf: loginData.get("_csrf"),
-                redirectUri: loginData.get("redirectUri"),
-                target: loginData.get("target"),
-                state: loginData.get("state"),
-                attributes: loginData.get("attributes")
-            }
-        };
-        return loginPasswordRequestOptions;
+    private async sendForm(request: any, formName: string, loginFormPageBody: string, formActionFieldId: string, additionalData: Object) {
+        console.log(`${new Date().toISOString()} - Preparing ${formName} form data`);
+        let loginData = this.findLoginData(loginFormPageBody, formActionFieldId);
+        const loginRequestOptions = this.prepareFormData(loginData, additionalData);
+        await timingUtils.delay(timingUtils.ONE_SECOND * 3);
+        let loginUrl = this.config.loginHost + loginData.get('actionUrl');
+        console.log(`${new Date().toISOString()} - Sending ${formName} form`);
+        return await this.sendLoginFormAtUrl(request, loginUrl, loginRequestOptions);
     }
 
-    private prepareLoginFormData(loginData: Map<string, string>) {
-        const loginRequestOptions = {
+    private findLoginData(loginFormUsernamePageBody: string, formId: string): Map<string, string> {
+        let $ = cheerio.load(loginFormUsernamePageBody);
+        let loginData: Map<string, string> = new Map<string, string>();
+        for (let hiddenInput of $('input[type="hidden"]')) {
+            if (hiddenInput.attribs['value'] !== '') {
+                loginData.set(hiddenInput.attribs['name'], hiddenInput.attribs['value']);
+            }
+        }
+        let form = $(`form#${formId}`).get(0);
+        loginData.set('actionUrl', form.attribs['action'])
+        return loginData;
+    }
+
+    private prepareFormData(loginData: Map<string, string>, additionalData: Object) {
+        let loginFormData = this.prepareCommonFormData(loginData);
+        for (const property in additionalData) {
+            loginFormData.form[property] = additionalData[property]
+        }
+        if (loginData.get("attributes") !== undefined) {
+            loginFormData.form["attributes"] = loginData.get("attributes")
+        }
+        return loginFormData;
+    }
+
+    private prepareCommonFormData(loginData: Map<string, string>) {
+        return {
             contentType: 'application/x-www-form-urlencoded',
             resolveWithFullResponse: true,
             followRedirect: true,
             allowGetBody: true,
             methodRewriting: false,
             form: {
-                user_id: loginData.get("user_id"),
                 responseType: loginData.get("responseType"),
                 prefilledUserId: "",
                 _csrf: loginData.get("_csrf"),
@@ -83,7 +82,6 @@ export class Springer extends Bookstore {
                 target: loginData.get("target")
             }
         };
-        return loginRequestOptions;
     }
 
     protected sendLoginFormAtUrl(request: any, loginUrl: string, postRequestOptions: object): Promise<string> {
@@ -112,9 +110,6 @@ export class Springer extends Bookstore {
                     console.log(`${new Date().toISOString()} - Could not download ${download.fileType} file for '${bookTitle}' by ${bookAuthors} - ${error}`);
                 }
             }
-            // } catch (error) {
-            //     console.log(`${new Date().toISOString()} - Could not get download url for ${download.fileType} file for '${bookTitle}' by ${bookAuthors} - ${error}`);
-            // }
         }
     }
 
@@ -169,18 +164,4 @@ export class Springer extends Bookstore {
             console.log(`${new Date().toISOString()} - No need to download ${download.fileType} file for ${bookName} - file already downloaded`);
         }
     }
-
-    private findLoginData(loginFormUsernamePageBody: string, formId: string): Map<string, string> {
-        let $ = cheerio.load(loginFormUsernamePageBody);
-        let loginData: Map<string, string> = new Map<string, string>();
-        for (let hiddenInput of $('input[type="hidden"]')) {
-            if (hiddenInput.attribs['value'] !== '') {
-                loginData.set(hiddenInput.attribs['name'], hiddenInput.attribs['value']);
-            }
-        }
-        let form = $(`form#${formId}`).get(0);
-        loginData.set('actionUrl', form.attribs['action'])
-        return loginData;
-    }
-
 }
