@@ -96,6 +96,25 @@ export abstract class Bookstore {
         });
     }
 
+    protected async postForPageBodyWithAdditionalOptions(request: any, pageUrl: string, delay: number, exactDelay, additionalOptions: any): Promise<string> {
+        if (exactDelay) {
+            await timingUtils.delayExactly(delay);
+        } else {
+            await timingUtils.delay(delay);
+        }
+        // console.log(pageUrl);
+        return new Promise((resolve, reject) => {
+            request.post(pageUrl, additionalOptions)
+                .then((response) => {
+                    resolve(response.body);
+                })
+                .catch((error) => {
+                    console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
+                    reject(error);
+                });
+        });
+    }
+
     protected async getFullPageResponse(request: any, pageUrl: string, delay: number): Promise<string> {
         await timingUtils.delay(delay);
         return new Promise((resolve, reject) => {
@@ -197,5 +216,17 @@ export abstract class Bookstore {
 
             downloadStream.pipe(fileWriterStream);
         });
+    }
+
+    protected prepareUrl(urlTemplate: string, parameters: Map<string, string>): string {
+        let result = urlTemplate
+        for (let [key, value] of parameters) {
+            result = result.replace(key, value);
+        }
+        return this.fixUrlCharacters(result)
+    }
+
+    protected fixUrlCharacters(url: string): string {
+        return url.replace(/(?<!http[s]*:)[\/]+/g, '/').trim();
     }
 }
