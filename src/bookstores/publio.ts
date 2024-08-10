@@ -1,6 +1,5 @@
 'use strict';
 
-import * as cheerio from "cheerio";
 import * as FS from "fs";
 import {Bookstore} from "./bookstore";
 import {filesystemUtils} from "../utils/filesystemUtils";
@@ -92,39 +91,33 @@ export class Publio extends Bookstore {
         let pageNbr = 1;
         let isLastPage = false;
         do {
-            console.log(`${new Date().toISOString()} - Getting page number: ${pageNbr}`);
-            isLastPage = await this.downloadPublicationsFromPage(request, accessToken, refreshToken, pageNbr++);
+            console.log(`${new Date().toISOString()} - Getting library page number: ${pageNbr}`);
+            isLastPage = await this.downloadPublicationsFromPage(request, pageNbr++, accessToken, refreshToken);
             let response = await this.refreshTokens(request, accessToken, refreshToken);
             accessToken = response['authorizationToken'];
             refreshToken = response['refreshToken'];
         } while (!isLastPage);
     }
 
-    private async downloadPublicationsFromPage(request: any, accessToken: string, refreshToken: string, pageNbr: number): Promise<boolean> {
-        const securityHeadersOptions = {
-            resolveWithFullResponse: true,
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Auth-Token': `Bearer ${accessToken}`
-            }
-        }
+    private async downloadPublicationsFromPage(request: any, pageNbr: number, accessToken: string, refreshToken: string): Promise<boolean> {
         let pageUrl = this.config.bookshelfServiceUrl.replace("_PAGE_", pageNbr);
-        let pageBodyString = await this.getPageBodyWithAdditionalOptions(request, pageUrl, timingUtils.ONE_SECOND * 3, false, securityHeadersOptions);
+        let pageBodyString = await this.getPageBodyWithAdditionalOptions(request, pageUrl, timingUtils.ONE_SECOND * 3, false, this.prepareAuthTokenHeader(accessToken));
         let pageBody = JSON.parse(pageBodyString);
 
         for (let item of pageBody.items) {
             switch (item.type) {
                 case 'SINGLE':
-                    await this.downloadSingleProduct(request, item.downloadInfoId, item.itemDigest, accessToken);
+                    // await this.downloadSingleProduct(request, item.downloadInfoId, item.itemDigest, accessToken);
                     break;
                 case 'GROUP':
+                    await this.downloadAllPublicationIssues(request, item.publication.title, item.publication.type, item.publicationId, accessToken, refreshToken);
                     break;
                 default:
                     break;
             }
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             if (this.config.itemsPerPage * pageNbr > pageBody.totalResults) {
                 resolve(true);
             } else {
@@ -133,12 +126,41 @@ export class Publio extends Bookstore {
         })
     }
 
+    private async downloadPublicationIssuesFromPage(request: any, publicationType: string, publicationId: string, accessToken: string, refreshToken: string): Promise<boolean> {
+        let pageNumber = 1;
+        let numberOfPages = 1;
+
+        do {
+            let pageUrl = this.preparePublicationIssuesUrl(publicationType, publicationId, pageNumber);
+            let pageBodyString = await this.getPageBodyWithAdditionalOptions(request, pageUrl, timingUtils.ONE_SECOND * 3, false, this.prepareAuthTokenHeader(accessToken));
+            let pageBody = JSON.parse(pageBodyString);
+            numberOfPages = Math.ceil(pageBody.totalResults / this.config.itemsPerPage);
+
+            for (let item of pageBody.items) {
+                switch (item.type) {
+                    case 'SINGLE':
+                        await this.downloadSingleProduct(request, item.downloadInfoId, item.itemDigest, accessToken);
+                        break;
+                    case 'GROUP':
+                        await this.downloadAllPublicationIssues(request, item.publication.type, item.publication.type, item.publicationId, accessToken, refreshToken);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            pageNumber++;
+        } while (pageNumber < numberOfPages);
+
+        return new Promise((resolve) => {
+            resolve(true);
+        })
+    }
+
     private async downloadSingleProduct(request: any, downloadId: string, itemDigest: string, accessToken: string) {
         let downloadData = await this.fetchDownloadData(request, downloadId, itemDigest, accessToken);
         let authors = downloadData.product.authors
             .map(author => author.label)
             .join(', ');
-        // let packages = Object.fromEntries(downloadData.packages.map(pkg => [pkg.label, pkg.id]));
         let publicationData = {
             downloadId: downloadId,
             digest: itemDigest,
@@ -149,15 +171,7 @@ export class Publio extends Bookstore {
 
         await this.prepareAndDownloadPublication(request, publicationData, accessToken);
 
-        return new Promise((resolve, reject) => {
-                resolve(true);
-            }
-        );
-    }
-
-
-    private async getAllPublicationsDataFromPage(request: any, accessToken: string, refreshToken: string, pageNbr: number): Promise<boolean> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
                 resolve(true);
             }
         );
@@ -166,7 +180,7 @@ export class Publio extends Bookstore {
 
     private async prepareAndDownloadPublication(request: any, publicationData: Object, accessToken: string) {
         let isReady = await this.prepareProductToDownload(request, publicationData['title'], publicationData['downloadId'], publicationData['digest'], accessToken);
-        console.log(`${new Date().toISOString()} - Package for ${publicationData['title']} ${isReady ? 'prepared' : 'could not be prepared'}`);
+        console.log(`${new Date().toISOString()} - Package for ${publicationData['title']} ${isReady ? 'is ready' : 'could not be prepared'}`);
 
         if (isReady) {
             for (let pkg of publicationData['packages']) {
@@ -181,32 +195,20 @@ export class Publio extends Bookstore {
         await this.postForPageBodyWithAdditionalOptions(request, preparePublicationUrl, timingUtils.ONE_SECOND, false, preparePostOptions);
     }
 
-    private async downloadAllPublicationIssues(request: any, productPageBody: string) {
-        const shelfPagesLinks: string[] = this.getPagesLinks(productPageBody, this.config.mainPageUrl);
-        let pageBody = productPageBody;
-        // await this.downloadPublicationsFromPage(request, pageBody);
-        for (let pageUrl of shelfPagesLinks) {
-            console.log(`${new Date().toISOString()} - Changing issues page to: ${pageUrl}`);
-            pageBody = await this.getPageBody(request, pageUrl, timingUtils.ONE_SECOND);
-            // await this.downloadPublicationsFromPage(request, pageBody);
-        }
-    }
-
-    private getPagesLinks(body: string, mainPageUrl: string) {
-        let result: string[] = [];
-        const $ = cheerio.load(body);
-        $('.pages a').each(function (i, elem) {
-            if (elem.attribs['href'].indexOf('pageNumber') !== -1 &&
-                result.indexOf(mainPageUrl + elem.attribs['href']) < 0) {
-                const linkUrl = mainPageUrl + elem.attribs['href'];
-                result.push(linkUrl);
-            }
-        });
-        return result;
+    private async downloadAllPublicationIssues(request: any, publicationName: string, publicationType: string, publicationId: string, accessToken: string, refreshToken: string) {
+        let pageNbr = 1;
+        let isLastPage = false;
+        do {
+            console.log(`${new Date().toISOString()} - Getting page number: ${pageNbr++} for ${publicationName}`);
+            isLastPage = await this.downloadPublicationIssuesFromPage(request, publicationType, publicationId, accessToken, refreshToken);
+            let response = await this.refreshTokens(request, accessToken, refreshToken);
+            accessToken = response['authorizationToken'];
+            refreshToken = response['refreshToken'];
+        } while (!isLastPage);
     }
 
     private async prepareProductToDownload(request: any, title: string, downloadId: string, digest: string, accessToken: string) {
-        let numberOfAttempts = 1
+        let numberOfAttempts = 0
         let statusUrl = this.prepareDownloadStatusUrl(downloadId, digest);
         let additionalRequestParameters = this.prepareAuthTokenHeader(accessToken);
 
@@ -221,10 +223,10 @@ export class Publio extends Bookstore {
         while (response['status'] != 'READY' && numberOfAttempts++ < this.config.maxPreparationAttempt) {
             let progressData = await this.getPageBodyWithAdditionalOptions(request, statusUrl, timingUtils.ONE_SECOND, false, additionalRequestParameters);
             response = JSON.parse(progressData);
-            console.log(`${new Date().toISOString()} - Check #${numberOfAttempts}, package preparation progress - ${response['progress']}`);
-        };
+            console.log(`${new Date().toISOString()} - Check #${numberOfAttempts}, package preparation progress - ${(response['status'] !== 'READY') ? response['progress'] : response['status']}`);
+        }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             resolve(numberOfAttempts < this.config.maxPreparationAttempt);
         });
     }
@@ -233,7 +235,7 @@ export class Publio extends Bookstore {
         label: string,
         id: string
     }, accessToken: string) {
-        let publicationName: string = stringUtils.formatPathName(`${title}`) + ' - ' + stringUtils.formatPathName(`${authors}`);
+        let publicationName: string = (stringUtils.formatPathName(`${title}`) + ' - ' + stringUtils.formatPathName(`${authors}`)).replace(/\s+-\s+$/g, '');
         const downloadDir = `${this.booksDir}/${publicationName}`;
         if (!(await filesystemUtils.checkIfDirectoryExists(downloadDir))) {
             FS.mkdirSync(downloadDir);
@@ -275,7 +277,7 @@ export class Publio extends Bookstore {
         return this.fixUrlCharacters(this.config.mainPageUrl + downloadUrlsData['directDownloadUrl']);
     }
 
-    private async refreshTokens(request: any, accessToken, refreshToken) {
+    private async refreshTokens(request: any, accessToken: string, refreshToken: string) {
         let responseString = await this.postForPageBodyWithAdditionalOptions(request, this.config.refreshTokensService, timingUtils.ONE_SECOND, false, this.prepareRefreshTokenOptions(accessToken, refreshToken))
         return JSON.parse(responseString);
     }
@@ -285,6 +287,16 @@ export class Publio extends Bookstore {
             ['_DIGEST_', itemDigest]]);
 
         return this.prepareUrl(this.config.filePackagesUrl, parameters);
+    }
+
+    private preparePublicationIssuesUrl(publicationType: string, publicationId: string, pageNumber: number) {
+        let parameters = new Map([['_PUBLICATIONTYPE_', publicationType.replace('_', '-').toLowerCase()],
+            ['_PUBLICATIONID_', publicationId],
+            ['_PERPAGE_', this.config.itemsPerPage],
+            ['_PAGE_', pageNumber],
+        ]);
+
+        return this.prepareUrl(this.config.publicationIssuesListUrl, parameters);
     }
 
     private prepareInitDownloadUrl(downloadId: string, itemDigest: string, pkgNumber: string) {
@@ -326,7 +338,7 @@ export class Publio extends Bookstore {
                 'Content-Type': 'application/json',
                 'X-Auth-Token': `Bearer ${accessToken}`
             },
-            body: {
+            json: {
                 refreshToken: refreshToken
             }
         };

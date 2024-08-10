@@ -14,5 +14,6 @@
   "preparePublicationUrl": "https://www.publio.pl/rest/v3/user/library/download/_DOWNLOADID_/_DIGEST_/prepare",
   "preparationStatusUrl": "https://www.publio.pl/rest/v3/user/library/download/_DOWNLOADID_/_DIGEST_/preparation-status",
   "initDownloadLinksUrl": "https://www.publio.pl/rest/v3/user/library/download/_DOWNLOADID_/_DIGEST_/package/_PACKAGE_/download/init",
-  "productDownloadTypesServiceUrl": "https://www.publio.pl/klient/pobieranie/ajax/download-product-headers.html"
+  "productDownloadTypesServiceUrl": "https://www.publio.pl/klient/pobieranie/ajax/download-product-headers.html",
+  "publicationIssuesListUrl": "https://www.publio.pl/rest/v3/user/library/_PUBLICATIONTYPE_/_PUBLICATIONID_/publications?itemsPerPage=_PERPAGE_&archive=false&page=_PAGE_"
 }
