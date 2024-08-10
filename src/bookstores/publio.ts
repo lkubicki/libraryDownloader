@@ -26,13 +26,7 @@ export class Publio extends Bookstore {
         isLoggedIn: boolean,
         body: string
     }> {
-        const getRequestOptions = {
-            resolveWithFullResponse: true,
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Auth-Token': `Bearer ${accessToken}`
-            },
-        };
+        const getRequestOptions = this.prepareAuthTokenHeader(accessToken);
         return new Promise((resolve, reject) => {
             request.get(this.config.bookshelfServiceUrl, getRequestOptions)
                 .then((response) => {
@@ -107,7 +101,7 @@ export class Publio extends Bookstore {
         for (let item of pageBody.items) {
             switch (item.type) {
                 case 'SINGLE':
-                    // await this.downloadSingleProduct(request, item.downloadInfoId, item.itemDigest, accessToken);
+                    await this.downloadSingleProduct(request, item.downloadInfoId, item.itemDigest, accessToken);
                     break;
                 case 'GROUP':
                     await this.downloadAllPublicationIssues(request, item.publication.title, item.publication.type, item.publicationId, accessToken, refreshToken);
