@@ -1,0 +1,13 @@
+{
+  "bookstoreName": "Legimi",
+  "moduleName": "legimi",
+  "controllerName": "Legimi",
+  "itemsPerPage": 80,
+  "maxPreparationAttempt": 20,
+  "mainPageUrl": "https://www.legimi.pl/",
+  "bookshelfUrl": "https://www.legimi.pl/polka/",
+  "loginFormUrl": "https://www.legimi.pl/konto/zaloguj/?redirect=%2Fpolka%2F",
+  "loginServiceUrl": "https://www.legimi.pl/konto/zaloguj/?redirect=%2Fpolka%2F",
+  "bookshelfPageUrl": "https://www.legimi.pl/polka/?page=_PAGE_",
+  "prepareDownloadUrl": "https://www.legimi.pl/api/shelf/book/_BOOKID_/download?format=_FORMATID_"
+}

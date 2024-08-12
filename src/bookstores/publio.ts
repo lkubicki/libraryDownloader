@@ -268,7 +268,7 @@ export class Publio extends Bookstore {
         let downloadUrlsDataString = await this.postForPageBodyWithAdditionalOptions(request, downloadInitUrl, timingUtils.ONE_SECOND, false, additionalOptions)
         let downloadUrlsData = JSON.parse(downloadUrlsDataString);
 
-        return this.fixUrlCharacters(this.config.mainPageUrl + downloadUrlsData['directDownloadUrl']);
+        return this.fixUrlCharacters(`${this.config.mainPageUrl}${downloadUrlsData['directDownloadUrl']}`);
     }
 
     private async refreshTokens(request: any, accessToken: string, refreshToken: string) {
