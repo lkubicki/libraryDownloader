@@ -7,8 +7,6 @@ import {filesystemUtils} from "../utils/filesystemUtils";
 import {stringUtils} from "../utils/stringUtils";
 import FS from "fs";
 
-let unidecode = require("unidecode");
-
 const FILE_TYPES = {
     mp3: {extension: "zip", id: "1"},
     MP3: {extension: "zip", id: "1"},
@@ -71,7 +69,7 @@ export class Legimi extends Bookstore {
         let productData = this.getProductMetadata(productPageBody);
         if (productData != null) {
             console.log(`${new Date().toISOString()} - Fetched ${productData.title} metadata`);
-            if(productData.fileFormats.length > 0) {
+            if (productData.fileFormats.length > 0) {
                 for (let fileFormat of productData.fileFormats) {
                     let fileFormatId = FILE_TYPES[fileFormat].id;
                     let prepareDownloadUrl = this.preparePrepareDownloadUrl(productData.objectId, fileFormatId);
@@ -104,12 +102,12 @@ export class Legimi extends Bookstore {
 
             const initScript = JSON.parse(initScriptString);
             const bookData = initScript.shelfBookContainer.response.shelfBook;
-            if(bookData != null) {
+            if (bookData != null) {
                 return {
                     objectId: bookData.synObjId,
                     title: bookData.book.title,
                     authors: bookData.book.authorName,
-                    fileFormats: bookData.book.ebook != null && bookData.book.ebook.canBeAccessedWhenUserUnlIsNotValid ? Object.keys(bookData.book.ebook.bookFormats): [],
+                    fileFormats: bookData.book.ebook != null && bookData.book.ebook.canBeAccessedWhenUserUnlIsNotValid ? Object.keys(bookData.book.ebook.bookFormats) : [],
                 }
             }
         }
@@ -155,7 +153,7 @@ export class Legimi extends Bookstore {
         title: string;
         authors: string;
         fileFormats: string[]
-    }, fileFormat:string) {
+    }, fileFormat: string) {
         let productTitle: string = stringUtils.formatPathName(`${productData.title}`);
         if (productData.authors != '') {
             productTitle += ` - ${productData.authors}`;
