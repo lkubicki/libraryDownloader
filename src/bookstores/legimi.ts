@@ -71,11 +71,15 @@ export class Legimi extends Bookstore {
         let productData = this.getProductMetadata(productPageBody);
         if (productData != null) {
             console.log(`${new Date().toISOString()} - Fetched ${productData.title} metadata`);
-            for (let fileFormat of productData.fileFormats) {
-                let fileFormatId = FILE_TYPES[fileFormat].id;
-                let prepareDownloadUrl = this.preparePrepareDownloadUrl(productData.objectId, fileFormatId);
-                let directDownloadLink = await this.fetchDirectDownloadLink(request, prepareDownloadUrl);
-                await this.downloadProduct(request, directDownloadLink, productData, fileFormat)
+            if(productData.fileFormats.length > 0) {
+                for (let fileFormat of productData.fileFormats) {
+                    let fileFormatId = FILE_TYPES[fileFormat].id;
+                    let prepareDownloadUrl = this.preparePrepareDownloadUrl(productData.objectId, fileFormatId);
+                    let directDownloadLink = await this.fetchDirectDownloadLink(request, prepareDownloadUrl);
+                    await this.downloadProduct(request, directDownloadLink, productData, fileFormat)
+                }
+            } else {
+                console.log(`${new Date().toISOString()} - No downloads available for ${productData.title}`);
             }
         } else {
             console.log(`${new Date().toISOString()} - Could not fetch metadata from ${downloadPageUrl}`);
@@ -100,12 +104,13 @@ export class Legimi extends Bookstore {
 
             const initScript = JSON.parse(initScriptString);
             const bookData = initScript.shelfBookContainer.response.shelfBook;
-
-            return {
-                objectId: bookData.synObjId,
-                title: bookData.book.title,
-                authors: bookData.book.authorName,
-                fileFormats: Object.keys(bookData.book.ebook.bookFormats)
+            if(bookData != null) {
+                return {
+                    objectId: bookData.synObjId,
+                    title: bookData.book.title,
+                    authors: bookData.book.authorName,
+                    fileFormats: bookData.book.ebook != null && bookData.book.ebook.canBeAccessedWhenUserUnlIsNotValid ? Object.keys(bookData.book.ebook.bookFormats): [],
+                }
             }
         }
         return null;
