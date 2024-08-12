@@ -107,7 +107,7 @@ export class Legimi extends Bookstore {
                     objectId: bookData.synObjId,
                     title: bookData.book.title,
                     authors: bookData.book.authorName,
-                    fileFormats: bookData.book.ebook != null && bookData.book.ebook.canBeAccessedWhenUserUnlIsNotValid ? Object.keys(bookData.book.ebook.bookFormats) : [],
+                    fileFormats: bookData.book.ebook != null && bookData.book.ebook.isBoughtBook ? Object.keys(bookData.book.ebook.bookFormats) : [],
                 }
             }
         }
