@@ -68,7 +68,7 @@ export class Legimi extends Bookstore {
         let productPageBody = await this.getPageBody(request, downloadPageUrl, 2 * timingUtils.ONE_SECOND);
         let productData = this.getProductMetadata(productPageBody);
         if (productData != null) {
-            console.log(`${new Date().toISOString()} - Fetched ${productData.title} metadata`);
+            console.log(`${new Date().toISOString()} - Fetched metadata for "${productData.title}"`);
             if (productData.fileFormats.length > 0) {
                 for (let fileFormat of productData.fileFormats) {
                     let fileFormatId = FILE_TYPES[fileFormat].id;
@@ -77,7 +77,7 @@ export class Legimi extends Bookstore {
                     await this.downloadProduct(request, directDownloadLink, productData, fileFormat)
                 }
             } else {
-                console.log(`${new Date().toISOString()} - No downloads available for ${productData.title}`);
+                console.log(`${new Date().toISOString()} - No downloads available for "${productData.title}"`);
             }
         } else {
             console.log(`${new Date().toISOString()} - Could not fetch metadata from ${downloadPageUrl}`);
