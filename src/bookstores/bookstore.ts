@@ -39,6 +39,19 @@ export abstract class Bookstore {
         return got.extend({
             headers: {
                 'User-Agent': constants.userAgent
+            // },
+            // hooks: {
+            //     beforeRequest: [function(request) {
+            //         console.log(`=============== ${request.method} - ${request.url} ===============`);
+            //         console.log(request.headers);
+            //     }],
+            //     afterResponse: [
+            //         (response, retryWithMergedOptions) => {
+            //             console.log(`==============================================================`);
+            //             console.log(response.body);
+            //             return response;
+            //         }
+            //     ]
             }
         }).extend({cookieJar});
     }

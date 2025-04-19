@@ -2,7 +2,6 @@
 
 import * as cheerio from "cheerio";
 import * as FS from "fs";
-import * as iconv from "iconv-lite"
 import {Bookstore} from "./bookstore";
 import {filesystemUtils} from "../utils/filesystemUtils";
 import {timingUtils} from "../utils/timingUtils";
@@ -31,7 +30,7 @@ export class Ebookpoint extends Bookstore {
                 .then((response) => {
                     resolve({
                         isLoggedIn: (response.url == this.config.bookshelfUrl),
-                        body: iconv.decode(Buffer.from(response.body), "ISO-8859-2")
+                        body: response.body
                     });
                 })
                 .catch((error) => {
@@ -42,32 +41,36 @@ export class Ebookpoint extends Bookstore {
     }
 
     protected async logIn(request: any): Promise<string> {
-        await this.visitLoginForm(request, this.config.loginFormUrl);
+        var pageBody = await this.visitLoginForm(request, this.config.loginFormUrl);
+        var token = this.fetchCsrfToken(pageBody);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
 
         const postRequestOptions = {
             resolveWithFullResponse: true,
-            followRedirect: false,
+            followRedirect: true,
+            allowGetBody: true,
+            methodRewriting: false,
             form: {
-                gdzie: this.config.bookshelfUrl,
-                edit: '',
-                loginemail: this.config.login,
-                haslo: this.config.password,
-                remember: 1
+                csrf_token: token,
+                email: this.config.login,
+                password: this.config.password,
+                _remember_me: 'on'
             }
         };
 
         return new Promise((resolve, reject) => {
             request.post(this.config.loginServiceUrl, postRequestOptions)
                 .then((response) => {
-                    if (response.url == this.config.userIndexPageUrl) {
-                        console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                        request.get(this.config.bookshelfUrl, GET_REQUEST_OPTIONS)
-                            .then((response) => resolve(iconv.decode(Buffer.from(response.body), "ISO-8859-2")))
-                            .catch((error) => reject(`Could not get page contents for: ${this.config.bookshelfUrl}. Error: ${error}`));
-                    } else {
-                        reject(`Could not log in as ${this.config.login}`);
-                    }
+                    request.get(this.config.bookshelfUrl, GET_REQUEST_OPTIONS)
+                        .then((response) => {
+                            if (response.url.indexOf(this.notLoggedInRedirectUrlPart) > 0) {
+                                reject(`Could not log in as ${this.config.login}`);
+                            } else {
+                                console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
+                                resolve(response.body)
+                            }
+                        })
+                        .catch((error) => reject(`Could not get page contents for: ${this.config.bookshelfUrl}. Error: ${error}`));
                 })
                 .catch((error) => {
                     reject(`Could not log in as ${this.config.login}. Error: ${error}`);
@@ -79,7 +82,7 @@ export class Ebookpoint extends Bookstore {
         await this.getProductsFromShelf(request, bookshelfPageBody, ".ebooki");
         console.log(`${new Date().toISOString()} - Getting books from archive`);
         const archivePageBody = await this.getPageBodyWithAdditionalOptions(request, this.config.archiveUrl, timingUtils.ONE_SECOND, false, GET_REQUEST_OPTIONS);
-        await this.getProductsFromShelf(request, iconv.decode(Buffer.from(archivePageBody), "ISO-8859-2"), ".lista li");
+        await this.getProductsFromShelf(request, archivePageBody, ".lista li");
     }
 
     protected async getProductsFromShelf(request: any, bookshelfPageBody: string, ebookElementSelector: string) {
@@ -87,26 +90,30 @@ export class Ebookpoint extends Bookstore {
         for (let ebookListElement of $(ebookElementSelector)) {
             let productMetadata: { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: { format: string, status: string, troya: string }[] } =
                 this.getBookMetadata($, ebookListElement);
-            try {
-                productMetadata.fileFormats = await this.getBookFileFormats(request, productMetadata.controlValue)
-                if (productMetadata.fileFormats.length > 0) {
-                    console.log(`${new Date().toISOString()} - Found ${productMetadata.fileFormats.map(format => format['format'])} filetypes for: ${productMetadata.title}`);
+            if (productMetadata.controlValue != undefined) {
+                try {
+                    productMetadata.fileFormats = await this.getBookFileFormats(request, productMetadata.controlValue)
+                    if (productMetadata.fileFormats.length > 0) {
+                        console.log(`${new Date().toISOString()} - Found ${productMetadata.fileFormats.map(format => format['format'])} filetypes for: ${productMetadata.title}`);
 
-                    const elementName: string = `${productMetadata.title} - ${productMetadata.authors}`
-                    const downloadDir = await this.createProductFolder(elementName);
-                    for (let fileFormat of productMetadata.fileFormats) {
-                        console.log(`${new Date().toISOString()} - Getting ${fileFormat['format']} file for: ${productMetadata.title} by ${productMetadata.authors}`);
-                        if (fileFormat.troya != undefined) {
-                            await this.downloadCourseFiles(request, productMetadata, fileFormat.format, fileFormat.troya, downloadDir);
-                        } else {
-                            await this.downloadFiles(request, productMetadata, fileFormat.format, this.checkIfReady(fileFormat.status), downloadDir);
+                        const elementName: string = `${productMetadata.title} - ${productMetadata.authors}`
+                        const downloadDir = await this.createProductFolder(elementName);
+                        for (let fileFormat of productMetadata.fileFormats) {
+                            console.log(`${new Date().toISOString()} - Getting ${fileFormat['format']} file for: ${productMetadata.title} by ${productMetadata.authors}`);
+                            if (fileFormat.troya != undefined) {
+                                await this.downloadCourseFiles(request, productMetadata, fileFormat.format, fileFormat.troya, downloadDir);
+                            } else {
+                                await this.downloadFiles(request, productMetadata, fileFormat.format, this.checkIfReady(fileFormat.status), downloadDir);
+                            }
                         }
+                    } else {
+                        console.log(`${new Date().toISOString()} - Could not find any downloadable filetypes for: ${productMetadata.title}`);
                     }
-                } else {
-                    console.log(`${new Date().toISOString()} - Could not find any downloadable filetypes for: ${productMetadata.title}`);
+                } catch (error) {
+                    console.log(`${new Date().toISOString()} - Error getting product: ${error}`);
                 }
-            } catch (error) {
-                console.log(`${new Date().toISOString()} - Error getting product: ${error}`);
+            } else {
+                console.log(`${new Date().toISOString()} - Could not download: ${productMetadata.title} - no control data`);
             }
         }
     }
@@ -128,6 +135,7 @@ export class Ebookpoint extends Bookstore {
         let bookElementData: string[] = [];
         for (let coverParagraph of $("p.cover", ebookListElement)) {
             bookElementData = coverParagraph.attribs['onclick']
+                .replace(/modal.showModal3\([a-zA-Z0-9\'\",_\s-']+\);/g,'')
                 .replace(/modal.showModal\(|\)|'/g, '')
                 .split(',');
         }
@@ -136,9 +144,13 @@ export class Ebookpoint extends Bookstore {
             id: bookElementData[PRODUCT_ID],
             title: bookTitleAndAuthors.title,
             authors: bookTitleAndAuthors.authors,
-            controlValue: bookElementData[CONTROL_VALUE],
+            controlValue: this.getControlValue(bookElementData[CONTROL_VALUE]),
             fileFormats: []
         };
+    }
+
+    private getControlValue(bookElementControlValue: string): string {
+        return bookElementControlValue.indexOf("libraryCourses") >= 0 ? undefined: bookElementControlValue;
     }
 
     private getBookTitleAndAuthors($: any, ebookListElement: any) {
@@ -180,14 +192,17 @@ export class Ebookpoint extends Bookstore {
 
     private async generateProduct(request: any, id: string, controlValue: string, fileFormat: string): Promise<{ ready: boolean, error: string }> {
         const mapObj = {
-            _bookId_: id,
+            _bookId_: id.replace(/_EBOOK/g,'').toLowerCase(),
             _fileFormat_: fileFormat,
             _control_: controlValue
         };
         let downloadLink: string = this.config.generateProductServiceUrl.replace(/_bookId_|_control_|_fileFormat_/gi, function (matched) {
             return mapObj[matched];
         });
-        await this.getPageBody(request, downloadLink, timingUtils.ONE_SECOND * 5);
+        await this.getPageBodyWithAdditionalOptions(request, downloadLink, timingUtils.ONE_SECOND * 5, false, {
+            resolveWithFullResponse: true,
+            host: "ebookpoint.pl"
+        });
         console.log(`${new Date().toISOString()} - Product preparation started`);
         return await this.waitUntilPrepared(request, downloadLink);
     }
@@ -201,7 +216,11 @@ export class Ebookpoint extends Bookstore {
         try {
             let fileFormats: string[] = [];
             do {
-                const response: string = await this.getPageBodyWithAdditionalOptions(request, statusLink, 0, true, GET_OPTIONS);
+                const options = {
+                    resolveWithFullResponse: true,
+                    host: "ebookpoint.pl"
+                };
+                const response: string = await this.getPageBodyWithAdditionalOptions(request, statusLink, 0, true, options);
                 if (response != undefined) {
                     const responseData = JSON.parse(response);
                     console.log(`${new Date().toISOString()} - Waiting for files to be generated - current attempt:${count}, status: ${responseData.status}`);
@@ -270,5 +289,10 @@ export class Ebookpoint extends Bookstore {
             status: fmt['status'],
             troya: fmt['format_name'] === 'video' ? videoId : undefined
         };
+    }
+
+    private fetchCsrfToken(pageBody: string): string {
+        const $ = cheerio.load(pageBody);
+        return $('[name=csrf_token]').val() as string;
     }
 }
