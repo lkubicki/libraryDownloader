@@ -5,7 +5,7 @@
   "statusGenerated": "OK",
   "mainPageUrl": "https://ebookpoint.pl/",
   "userIndexPageUrl": "https://ebookpoint.pl/users/index.cgi",
-  "bookshelfUrl": "https://ebookpoint.pl/users/konto/biblioteka",
+  "bookshelfUrl": "https://ebookpoint.pl/users/konto/biblioteka/ebooki",
   "archiveUrl": "https://ebookpoint.pl/users/konto/archiwum/ebooki",
   "loginFormUrl": "https://ebookpoint.pl/users",
   "loginServiceUrl": "https://ebookpoint.pl/users/login",

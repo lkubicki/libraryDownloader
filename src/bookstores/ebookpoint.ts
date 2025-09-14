@@ -14,7 +14,8 @@ const FILE_EXTENSIONS = {
 
 const GET_REQUEST_OPTIONS = {
     responseType: 'buffer',
-    resolveWithFullResponse: true
+    resolveWithFullResponse: true,
+    followAllRedirects: true,
 };
 
 const GET_OPTIONS = {
@@ -47,14 +48,18 @@ export class Ebookpoint extends Bookstore {
 
         const postRequestOptions = {
             resolveWithFullResponse: true,
-            followRedirect: true,
+            followAllRedirects: true,
             allowGetBody: true,
             methodRewriting: false,
             form: {
                 csrf_token: token,
                 email: this.config.login,
                 password: this.config.password,
-                _remember_me: 'on'
+                target_path: ""
+            },
+            headers: {
+                host: "ebookpoint.pl",
+                origin: this.config.mainPageUrl
             }
         };
 
@@ -88,7 +93,14 @@ export class Ebookpoint extends Bookstore {
     protected async getProductsFromShelf(request: any, bookshelfPageBody: string, ebookElementSelector: string) {
         const $ = cheerio.load(bookshelfPageBody);
         for (let ebookListElement of $(ebookElementSelector)) {
-            let productMetadata: { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: { format: string, status: string, troya: string }[] } =
+            let productMetadata: {
+                type: string,
+                id: string,
+                title: string,
+                authors: string,
+                controlValue: string,
+                fileFormats: { format: string, status: string, troya: string }[]
+            } =
                 this.getBookMetadata($, ebookListElement);
             if (productMetadata.controlValue != undefined) {
                 try {
@@ -127,7 +139,14 @@ export class Ebookpoint extends Bookstore {
         return downloadDir;
     }
 
-    private getBookMetadata($: any, ebookListElement: any): { type: string, id: string, title: string, authors: string, controlValue: string, fileFormats: { format: string, status: string, troya: string }[] } {
+    private getBookMetadata($: any, ebookListElement: any): {
+        type: string,
+        id: string,
+        title: string,
+        authors: string,
+        controlValue: string,
+        fileFormats: { format: string, status: string, troya: string }[]
+    } {
         const CONTROL_VALUE: number = 0;
         const PRODUCT_TYPE: number = 1;
         const PRODUCT_ID = 2;
@@ -135,14 +154,16 @@ export class Ebookpoint extends Bookstore {
         let bookElementData: string[] = [];
         for (let coverParagraph of $("p.cover", ebookListElement)) {
             bookElementData = coverParagraph.attribs['onclick']
-                .replace(/modal.showModal3\([a-zA-Z0-9\'\",_\s-']+\);/g,'')
-                .replace(/modal.showModal\(|\)|'/g, '')
+                .replace(/modal.showModal3\([a-zA-Z0-9\'\",_\s-']+\);/g, '')
+                .replace(/modal.showModal\(|\);|'/g, '')
+                .replace(/library.modal\(|\)|;|'/g, '')
+                .replace(/[\s]*return false;[\s]*"/g, '')
                 .split(',');
         }
         return {
-            type: bookElementData[PRODUCT_TYPE].toLowerCase(),
-            id: bookElementData[PRODUCT_ID],
-            title: bookTitleAndAuthors.title,
+            type: bookElementData[PRODUCT_TYPE].trim(),
+            id: bookElementData[PRODUCT_ID] != undefined ? bookElementData[PRODUCT_ID].trim() : null,
+            title: bookTitleAndAuthors.title.trim(),
             authors: bookTitleAndAuthors.authors,
             controlValue: this.getControlValue(bookElementData[CONTROL_VALUE]),
             fileFormats: []
@@ -150,7 +171,7 @@ export class Ebookpoint extends Bookstore {
     }
 
     private getControlValue(bookElementControlValue: string): string {
-        return bookElementControlValue.indexOf("libraryCourses") >= 0 ? undefined: bookElementControlValue;
+        return bookElementControlValue.indexOf("libraryCourses") >= 0 ? undefined : bookElementControlValue;
     }
 
     private getBookTitleAndAuthors($: any, ebookListElement: any) {
@@ -159,7 +180,13 @@ export class Ebookpoint extends Bookstore {
         return {authors: authors, title: title};
     }
 
-    private async downloadFiles(request: any, productMetadata: { type: string; id: string; title: string; authors: string; controlValue: string }, fileFormat: string, isReady: boolean, downloadDir: string) {
+    private async downloadFiles(request: any, productMetadata: {
+        type: string;
+        id: string;
+        title: string;
+        authors: string;
+        controlValue: string
+    }, fileFormat: string, isReady: boolean, downloadDir: string) {
         const bookName: string = `${productMetadata.title} - ${productMetadata.authors}`
         const fileExtension = FILE_EXTENSIONS[fileFormat] !== undefined ? FILE_EXTENSIONS[fileFormat] : fileFormat;
         const fileName = stringUtils.formatPathName(`${bookName}.${fileExtension}`);
@@ -170,7 +197,7 @@ export class Ebookpoint extends Bookstore {
             }
             if (isReady || result.ready) {
                 console.log(`${new Date().toISOString()} - Files generated, downloading`);
-                await this.checkFileSizeAndDownload(request, productMetadata.id, productMetadata.controlValue, downloadDir, fileName, fileFormat);
+                await this.checkFileSizeAndDownload(request, productMetadata.type, productMetadata.controlValue, downloadDir, fileName, fileFormat);
             } else {
                 console.log(`${new Date().toISOString()} - Error downloading ${fileFormat} file for: ${productMetadata.title} - ${result.error}`);
             }
@@ -179,7 +206,13 @@ export class Ebookpoint extends Bookstore {
         }
     }
 
-    private async downloadCourseFiles(request: any, productMetadata: { type: string; id: string; title: string; authors: string; controlValue: string }, fileFormat: string, troyaId: string, downloadDir: string) {
+    private async downloadCourseFiles(request: any, productMetadata: {
+        type: string;
+        id: string;
+        title: string;
+        authors: string;
+        controlValue: string
+    }, fileFormat: string, troyaId: string, downloadDir: string) {
         const courseName: string = `${productMetadata.title} - ${productMetadata.authors}`
         const fileExtension = FILE_EXTENSIONS[fileFormat] !== undefined ? FILE_EXTENSIONS[fileFormat] : fileFormat;
         const fileName = stringUtils.formatPathName(`${courseName}.${fileExtension}`);
@@ -190,9 +223,12 @@ export class Ebookpoint extends Bookstore {
         }
     }
 
-    private async generateProduct(request: any, id: string, controlValue: string, fileFormat: string): Promise<{ ready: boolean, error: string }> {
+    private async generateProduct(request: any, id: string, controlValue: string, fileFormat: string): Promise<{
+        ready: boolean,
+        error: string
+    }> {
         const mapObj = {
-            _bookId_: id.replace(/_EBOOK/g,'').toLowerCase(),
+            _bookId_: id.replace(/_EBOOK/g, '').toLowerCase(),
             _fileFormat_: fileFormat,
             _control_: controlValue
         };
@@ -201,13 +237,19 @@ export class Ebookpoint extends Bookstore {
         });
         await this.getPageBodyWithAdditionalOptions(request, downloadLink, timingUtils.ONE_SECOND * 5, false, {
             resolveWithFullResponse: true,
-            host: "ebookpoint.pl"
+            headers: {
+                Host: "ebookpoint.pl"
+            }
         });
         console.log(`${new Date().toISOString()} - Product preparation started`);
         return await this.waitUntilPrepared(request, downloadLink);
     }
 
-    private async waitUntilPrepared(request: any, statusLink: string): Promise<{ ready: boolean; fileFormats: string[]; error: string }> {
+    private async waitUntilPrepared(request: any, statusLink: string): Promise<{
+        ready: boolean;
+        fileFormats: string[];
+        error: string
+    }> {
         console.log(statusLink);
         let count: number = 0;
         let ready: boolean = false;
@@ -218,7 +260,9 @@ export class Ebookpoint extends Bookstore {
             do {
                 const options = {
                     resolveWithFullResponse: true,
-                    host: "ebookpoint.pl"
+                    headers: {
+                        Host: "ebookpoint.pl"
+                    }
                 };
                 const response: string = await this.getPageBodyWithAdditionalOptions(request, statusLink, 0, true, options);
                 if (response != undefined) {
@@ -275,7 +319,11 @@ export class Ebookpoint extends Bookstore {
         return this.downloadFile(request, downloadLink, timingUtils.ONE_SECOND * 4, downloadDir, fileName);
     }
 
-    private async getBookFileFormats(request: any, controlValue: string): Promise<{ format: string, status: string, troya: string }[]> {
+    private async getBookFileFormats(request: any, controlValue: string): Promise<{
+        format: string,
+        status: string,
+        troya: string
+    }[]> {
         let pageUrl: string = this.config.getBookDetailsServiceUrl.replace('_control_', controlValue);
         let bookDetailsResponse = await this.getPageBody(request, pageUrl, timingUtils.ONE_SECOND)
         let bookDetailsJson = JSON.parse(bookDetailsResponse);

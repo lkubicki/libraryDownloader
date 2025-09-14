@@ -10,7 +10,7 @@ async function getBooksFromStore(storeItem: any, cookiesDir: string, booksDir: s
         const storeInstance: Bookstore = new storeModule[storeItem.controllerName](storeItem, cookiesDir, booksDir, maxFileSize);
         await storeInstance.getBooks();
     } catch (e) {
-        console.log(e);
+        console.log(`${new Date().toISOString()} - ${e}`);
     }
 }
 
