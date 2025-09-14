@@ -96,7 +96,7 @@ export class Programista extends Bookstore {
     }
 
     protected getFileMetadata(magazineFileName: string, magazineFileUrl: string): { fileName: string, fileExtension: string, fileUrl: string } {
-        let fileExtension = magazineFileName.match(/[A-Z]+$/)[0];
+        let fileExtension = magazineFileName.match(/[A-Z0-9]+$/)[0];
         return {
             fileExtension: fileExtension,
             fileName: magazineFileName.replace(fileExtension.toUpperCase(), '').replace(/[\s]+/gi, ' ').replace(/[\s]+$/gi, ''),
