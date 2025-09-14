@@ -3,11 +3,11 @@
   "moduleName": "packtpub",
   "controllerName": "PacktPub",
   "mainPageUrl": "https://www.packtpub.com/",
-  "bookshelfUrl": "https://account.packtpub.com/account/products",
-  "bookshelfServiceUrl": "https://subscription.packtpub.com/api/entitlements/users/me/products?sort=createdAt:DESC&limit=25&offset={offset}",
+  "bookshelfUrl": "https://subscription.packtpub.com/owned",
+  "bookshelfServiceUrl": "https://subscription.packtpub.com/api/entitlements/users/me/owned?sort=createdAt%3Adesc&search=&limit=24&offset={offset}",
   "typesServiceUrl": "https://services.packtpub.com/products-v1/products/{isbn}/types",
   "productDownloadServiceUrl": "https://services.packtpub.com/products-v1/products/{isbn}/files/{type}",
-  "loginFormUrl": "https://account.packtpub.com/login?returnUrl=%2Faccount%2Fproducts",
-  "loginServiceUrl": "https://services.packtpub.com/auth-v1/users/tokens",
+  "loginFormUrl": "https://packtpub.com/login?returnUrl=https%3A%2F%2Fsubscription.packtpub.com%2Fowned",
+  "loginServiceUrl": "https://www.packtpub.com/api/login",
   "tokensServiceUrl": "https://services.packtpub.com/auth-v1/users/me/tokens"
 }

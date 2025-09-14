@@ -23,8 +23,8 @@ export class PacktPub extends Bookstore {
     }
 
     protected async getProducts(request: any, loginResultPageBody: Object) {
-        let accessToken: Object = loginResultPageBody['data'].access;
-        let refreshToken: Object = loginResultPageBody['data'].refresh;
+        let accessToken: Object = loginResultPageBody['data'].tokens.access;
+        let refreshToken: Object = loginResultPageBody['data'].tokens.refresh;
 
         console.log(`${new Date().toISOString()} - Got access token`);
 
@@ -38,9 +38,6 @@ export class PacktPub extends Bookstore {
             offset += 25;
             for (let bookMetadata of listOfBooks) {
                 try {
-                    const tokens: { refresh: Object, access: Object } = await this.getNewTokens(request, refreshToken, accessToken);
-                    refreshToken = tokens.refresh;
-                    accessToken = tokens.access;
                     const bookDownloadableItems = await this.getBookDetails(request, this.config.typesServiceUrl, accessToken, bookMetadata['productId']);
                     for (const downloadableItemType of bookDownloadableItems['fileTypes']) {
                         await this.downloadBookshelfItem(request, accessToken, bookMetadata, downloadableItemType);

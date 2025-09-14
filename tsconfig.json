@@ -16,7 +16,9 @@
     "node_modules",
     "dist",
     "- old -",
-    "- tmp -"
+    "- tmp -",
+    "books",
+    ".cookies"
   ],
   "scripts": {
     "build": "tsc"
