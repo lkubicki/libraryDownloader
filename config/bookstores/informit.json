@@ -6,6 +6,7 @@
   "mainServiceUrl": "https://memberservices.informit.com/",
   "bookshelfUrl": "https://memberservices.informit.com/my_account/index.aspx?partner=53",
   "bookshelfUrlAsReferer": "https://memberservices.informit.com/my_account/login.aspx?partner=53",
+  "userDigitalProductsServiceUrl": "https://memberservices.informit.com/AccountPageService.asmx/GetUserDigitalProducts",
   "generateProductServiceUrl": "https://memberservices.informit.com/wm.asmx/Generate",
   "productStatusServiceUrl": "https://memberservices.informit.com/wm.asmx/CheckStatus",
   "downloadServiceUrl": "https://memberservices.informit.com/_fileFormat_.aspx?isbn=_isbn_&nid=_nid_",

@@ -32,36 +32,46 @@ export class InformIT extends Bookstore {
         return this.sendLoginForm(request, loginRequestOptions);
     }
 
+    private mapFormat(format: string): string {
+        switch (format) {
+            case "Non-DRM eBook":
+                return "pdf";
+            case "eBook Multiformat":
+            case "ePubs":
+                return "epub";
+        }
+    }
+
     protected async getProducts(request: any, bookshelfPageBody: string) {
-        const $ = cheerio.load(bookshelfPageBody);
-        for (let ebookListElement of $("dl.rFull")) {
+        const postRequestOptions = {
+            headers: {
+                origin: this.config.mainPageUrl,
+                referer: this.config.bookshelfUrl
+            },
+            json: {
+                productTypes: ""
+            }
+        };
+        const products = await this.fetchProductsData(request, postRequestOptions, bookshelfPageBody);
+
+        for (const product of products) {
+            console.log(`${new Date().toISOString()} - Checking ${product.name}`);
             try {
-                const title: string = this.getBookTitle($, ebookListElement);
-                console.log(`${new Date().toISOString()} - Found: "${title}"`);
-                const refreshLinks: { ready: boolean, downloadLink: string, isbn13: string, nid: string, fileType: string }[] =
-                    this.getRefreshLinks($, ebookListElement);
-                for (let refreshLink of refreshLinks) {
-                    if (!refreshLink.ready) {
-                        if (refreshLink.isbn13 != null && refreshLink.nid != null && refreshLink.fileType != null) {
-                            const fileName = stringUtils.formatPathName(title);
-                            const downloadDir = `${this.booksDir}${fileName}`;
-                            if (!(await filesystemUtils.checkIfElementExists(downloadDir, `${fileName}.${refreshLink.fileType}`))) {
-                                await timingUtils.delay(timingUtils.ONE_SECOND * 2);
-                                const generateResponse = await this.generateProduct(request, refreshLink.isbn13, refreshLink.nid, refreshLink.fileType);
-                                if (generateResponse.ready) {
-                                    console.log(`${new Date().toISOString()} - ${refreshLink.fileType} files for: ${title} generated. Downloading.`);
-                                    const downloadLink = this.prepareDownloadLink(refreshLink.isbn13, refreshLink.fileType, refreshLink.nid);
-                                    await this.downloadBook(request, downloadLink, title, refreshLink.fileType);
-                                } else {
-                                    console.log(`${new Date().toISOString()} - Could not prepare ${refreshLink.fileType} file for: ${title} - ${generateResponse.error}`);
-                                }
-                            } else {
-                                console.log(`${new Date().toISOString()} - No need to download ${refreshLink.fileType} file for: ${title} - file already exists`);
-                            }
-                        }
+                const fileName = stringUtils.formatPathName(product.name);
+                const downloadDir = `${this.booksDir}${fileName}`;
+                if (!(await filesystemUtils.checkIfElementExists(downloadDir, `${fileName}.${product.format}`))) {
+                    console.log(`${new Date().toISOString()} - ${product.format} file for ${product.name} does not exists. Will download file`);
+                    const generateResponse = await this.generateProduct(request, product.isbn13, product.nid, product.format);
+                    await timingUtils.delay(timingUtils.ONE_SECOND * 2);
+                    if (generateResponse.ready) {
+                        console.log(`${new Date().toISOString()} - ${product.format} files for: ${product.name} generated. Downloading.`);
+                        const downloadLink = this.prepareDownloadLink(product.isbn13, product.format, product.nid);
+                        await this.downloadBook(request, downloadLink, product.name, product.format);
                     } else {
-                        await this.downloadBook(request, refreshLink.downloadLink, title, refreshLink.fileType);
+                        console.log(`${new Date().toISOString()} - Could not prepare ${product.format} file for: ${product.name} - ${generateResponse.error}`);
                     }
+                } else {
+                    console.log(`${new Date().toISOString()} - No need to download ${product.format} file for: ${product.name} - file already exists`);
                 }
             } catch (error) {
                 console.log(`${new Date().toISOString()} - Error getting product: ${error}`);
@@ -69,8 +79,55 @@ export class InformIT extends Bookstore {
         }
     }
 
-    private getBookTitle($: any, ebookListElement: any): string {
-        return $("dt", ebookListElement).text();
+    private async fetchProductsData(request: any, postRequestOptions: {
+        headers: { origin: any; referer: any };
+        json: { productTypes: string }
+    }, bookshelfPageBody: string) {
+        console.log(`${new Date().toISOString()} - Fetching digital products list`);
+        const digitalProductsResponse = await request.post(this.config.userDigitalProductsServiceUrl, postRequestOptions);
+        const digitalProducts = JSON.parse(digitalProductsResponse.body);
+        const productsData = digitalProducts["d"]["DigitalProduct"];
+        const formatsMap = digitalProducts["d"]["Formats"]
+            .map(formatData => ({
+                productId: formatData.product_id,
+                isbn13: formatData.child_isbn13,
+                format: this.mapFormat(formatData.product_type)
+            }))
+            .reduce((map, formatData) => {
+                if (!map.has(formatData.productId)) {
+                    map.set(formatData.productId, []);
+                }
+                map.get(formatData.productId).push(formatData);
+                return map;
+            }, new Map());
+
+        const nid = this.fetchNetworkId(bookshelfPageBody);
+
+        return productsData.map(product => ({
+            productId: product.product_id,
+            name: product.product_name,
+            nid: nid,
+        })).flatMap(product => {
+            const formats = formatsMap.get(product.productId) || [];
+            return formats.map(formatData => ({
+                ...product,
+                isbn13: formatData.isbn13,
+                format: formatData.format
+            }));
+        });
+    }
+
+    private fetchNetworkId(bookshelfPageBody: string): string {
+        const $ = cheerio.load(bookshelfPageBody);
+        for (let scriptElement of $(".wrapper script:not([src])")) {
+            const scriptBody = (scriptElement.children[0] as unknown as Text).data;
+            const matched = scriptBody.match("networkID = \'[a-zA-Z0-9-]+\';")[0].trim();
+            const nid = matched.replace(/networkID\s+=\s+'/g, "").replace(/';/g, "");
+            if (nid != null && nid != "") {
+                return nid;
+            }
+        }
+        return null;
     }
 
     private prepareDownloadLink(isbn13: string, fileFormat: string, nid: string): string {
@@ -84,68 +141,27 @@ export class InformIT extends Bookstore {
         });
     }
 
-    private getRefreshLinks($: any, ebookListElement: any): { ready: boolean, downloadLink: string, isbn13: string, nid: string, fileType: string }[] {
-        let result: { ready: boolean, downloadLink: string, isbn13: string, nid: string, fileType: string }[] = [];
-        const mainServiceUrl = this.config.mainServiceUrl;
-        for (let refreshLink of $("dd.productState a", ebookListElement)) {
-            let refreshData: { ready: boolean, downloadLink: string, isbn13: string, nid: string, fileType: string };
-            if (refreshLink.attribs["href"].indexOf("javascript:regen") >= 0) {
-                const regenParameters = this.parseRegenCallParameters(refreshLink.attribs["href"]);
-                refreshData = {
-                    ready: false,
-                    downloadLink: null,
-                    isbn13: regenParameters.isbn,
-                    nid: regenParameters.nid,
-                    fileType: regenParameters.fileType
-                };
-            } else {
-                refreshData = {
-                    ready: true,
-                    downloadLink: `${this.config.mainServiceUrl}${refreshLink.attribs["href"]}`.replace(/([^:])[\/]+/g, "$1/"),
-                    isbn13: null,
-                    nid: null,
-                    fileType: refreshLink.attribs["href"].match(/\/[a-z]+\.aspx/)[0].replace(/\/|\.aspx/g, '')
-                };
-            }
-            if (result.indexOf(refreshData) < 0) {
-                result.push(refreshData);
-            }
-        }
-        return result;
-    }
-
-    private parseRegenCallParameters(regenCall: string) {
-        const ISBN: number = 1;
-        const NID: number = 2;
-        const FILE_TYPE = 4;
-        let bookElementData = regenCall
-            .replace(/javascript:regen\(|\)|'|"/g, '')
-            .split(',');
-        return {
-            isbn: bookElementData[ISBN].trim(),
-            nid: bookElementData[NID].trim(),
-            fileType: bookElementData[FILE_TYPE].trim()
-        }
-    }
-
-    private async generateProduct(request: any, isbn: string, nid: string, fileType: string): Promise<{ ready: boolean; error: string }> {
+    private async generateProduct(request: any, isbn: string, nid: string, fileType: string): Promise<{
+        ready: boolean;
+        error: string
+    }> {
         const postRequestOptions = {
             headers: {
-                origin: this.config.mainPageUrl,
-                referer: this.config.bookshelfUrl,
-                'DNT': 1,
-                'X-Requested-With': 'XMLHttpRequest'
+                "content-type": "application/x-www-form-urlencoded",
+                "x-requested-with": "XMLHttpRequest",
+                "host": "memberservices.informit.com",
+                dnt: 1
             },
             form: {
-                isbn13: isbn,
-                nid: nid,
-                format: fileType
+                isbn13: isbn.trim(),
+                nid: nid.trim(),
+                format: fileType.trim()
             }
         };
         console.log(`${new Date().toISOString()} - Started generating ${fileType} file`);
         const xmlParser = new xml2js.Parser();
         let postResult = await request.post(this.config.generateProductServiceUrl, postRequestOptions);
-        const postResponse = await xmlParser.parseStringPromise(postResult);
+        const postResponse = await xmlParser.parseStringPromise(postResult.body);
         if (postResponse.Result.RequestSuccess[0] == "True") {
             return await this.waitUntilGenerated(request, postRequestOptions, xmlParser);
         } else {
@@ -154,17 +170,27 @@ export class InformIT extends Bookstore {
         }
     }
 
-    private async waitUntilGenerated(request: any, postRequestOptions: { form: { isbn13: string; nid: string; format: string } }, xmlParser: xml2js.Parser) {
+    private async waitUntilGenerated(request: any, postRequestOptions: {
+        form: { isbn13: string; nid: string; format: string }
+    }, xmlParser: xml2js.Parser) {
         const MAX_RETRY = 60;
         let counter: number = 0;
-        let delay: number = 0;
+        let delay: number = timingUtils.ONE_SECOND * 2;
+        const requestOptions = {
+            headers: {
+                "content-type": "application/x-www-form-urlencoded",
+                "x-requested-with": "XMLHttpRequest",
+                "host": "memberservices.informit.com",
+                dnt: 1
+            },
+            body: "isbn13=" + postRequestOptions["form"]["isbn13"] + "&nid=" + postRequestOptions["form"]["nid"] + "&format=" + postRequestOptions["form"]["format"]
+        }
         let response;
         do {
             await timingUtils.delayExactly(delay);
-            const responseXml = await request.post(this.config.generateProductServiceUrl, postRequestOptions);
-            response = await xmlParser.parseStringPromise(responseXml);
+            const responseXml = await request.post(this.config.productStatusServiceUrl, requestOptions);
+            response = await xmlParser.parseStringPromise(responseXml.body);
             console.log(`${new Date().toISOString()} - Waiting for ${postRequestOptions.form.format} file to be generated: attempt ${counter} - RequestSuccess ${response.Result.RequestSuccess[0]}, GenerationCompleted ${response.Result.GenerationCompleted[0]}`);
-            delay = timingUtils.ONE_SECOND * 5;
             counter++;
         } while (response.Result.GenerationCompleted[0] == "False" && counter < MAX_RETRY);
         if (counter <= MAX_RETRY && response.Result.GenerationCompleted[0] == "True") {

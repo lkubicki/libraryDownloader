@@ -1,7 +1,7 @@
 'use strict';
 
 import {FileCookieStore} from "tough-cookie-file-store";
-import {CookieJar, Cookie} from "tough-cookie"
+import {CookieJar} from "tough-cookie"
 import * as FS from "fs";
 import {createWriteStream} from "fs";
 import {timingUtils} from "../utils/timingUtils";
@@ -72,7 +72,7 @@ export abstract class Bookstore {
 
     protected abstract getProducts(request: any, bookshelfPageBody: string);
 
-    protected async getPageBody(request: any, pageUrl: string, delay: number, exactDelay: boolean = false): Promise<string> {
+    protected async getPageBody(request: any, pageUrl: string, delay: number = 0, exactDelay: boolean = false): Promise<string> {
         if (exactDelay) {
             await timingUtils.delayExactly(delay);
         } else {
