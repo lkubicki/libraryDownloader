@@ -250,7 +250,6 @@ export class Ebookpoint extends Bookstore {
         fileFormats: string[];
         error: string
     }> {
-        console.log(statusLink);
         let count: number = 0;
         let ready: boolean = false;
         let notHandled: boolean = false;

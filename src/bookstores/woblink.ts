@@ -40,7 +40,7 @@ export class Woblink extends Bookstore {
                         bookDownloads: [],
                         bookId: publication.uid,
                         copyId: publication.copyId,
-                        bookTitle: publication.title,
+                        bookTitle: publication.title.replace("_plik", ""),
                         bookAuthors: this.getBookAuthors(publication.contributors)
                     }
                     for (let format of publication.format) {

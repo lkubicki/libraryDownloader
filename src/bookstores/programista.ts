@@ -100,7 +100,7 @@ export class Programista extends Bookstore {
         return {
             fileExtension: fileExtension,
             fileName: magazineFileName.replace(fileExtension.toUpperCase(), '').replace(/[\s]+/gi, ' ').replace(/[\s]+$/gi, ''),
-            fileUrl: (this.config.mainPageUrl + magazineFileUrl).replace('//','/')
+            fileUrl: magazineFileUrl
         };
     }
 
