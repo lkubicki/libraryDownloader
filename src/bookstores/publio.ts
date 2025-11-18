@@ -19,16 +19,16 @@ const FILE_EXTENSIONS = {
 
 export class Publio extends Bookstore {
     protected async checkIfUserIsLoggedIn(request: any): Promise<{ isLoggedIn: boolean, body: string }> {
-        return this.checkIfUserIsAlreadyLoggedIn(request, "");
+        return this.checkIfUserIsAlreadyLoggedIn(request);
     }
 
-    protected async checkIfUserIsAlreadyLoggedIn(request: any, accessToken: string): Promise<{
+    protected async checkIfUserIsAlreadyLoggedIn(request: any): Promise<{
         isLoggedIn: boolean,
         body: string
     }> {
-        const getRequestOptions = this.prepareAuthTokenHeader(accessToken);
+        const getRequestOptions = this.prepareBookshelfHeader();
         return new Promise((resolve, reject) => {
-            request.get(this.config.bookshelfServiceUrl, getRequestOptions)
+            request.get(this.config.bookshelfServiceUrl.replace("_PAGE_", "1"), getRequestOptions)
                 .then((response) => {
                     resolve({
                         isLoggedIn: true,
@@ -48,11 +48,18 @@ export class Publio extends Bookstore {
     }
 
     protected async logIn(request: any): Promise<string> {
-        await this.visitLoginForm(request, this.config.loginFormUrl);
+        // await this.visitLoginForm(request, this.config.loginFormUrl);
         console.log(`${new Date().toISOString()} - Logging in as ${this.config.login}`);
 
         const loginRequestOptions = {
             resolveWithFullResponse: true,
+            headers: {
+                'User-Agent': undefined,
+                'Content-Type': 'application/json',
+                'app-version': this.config.appVersion,
+                'app-platform': this.config.appPlatform,
+                'app-name': this.config.appName,
+            },
             json: {
                 login: this.config.login,
                 password: this.config.password,
@@ -315,12 +322,28 @@ export class Publio extends Bookstore {
         return this.prepareUrl(this.config.preparationStatusUrl, parameters);
     }
 
+    private prepareBookshelfHeader() {
+        return {
+            resolveWithFullResponse: true,
+            followRedirect: true,
+            headers: {
+                'User-Agent': undefined,
+                'Content-Type': 'application/json',
+                'app-version': this.config.appVersion,
+                'app-platform': this.config.appPlatform,
+                'app-name': this.config.appName,
+            }
+        }
+    }
+
     private prepareAuthTokenHeader(accessToken: string) {
         return {
             resolveWithFullResponse: true,
+            followRedirect: true,
             headers: {
+                'User-Agent': undefined,
                 'Content-Type': 'application/json',
-                'X-Auth-Token': `Bearer ${accessToken}`
+                'X-Auth-Token': `Bearer ${accessToken}`,
             },
         };
     }
@@ -329,6 +352,7 @@ export class Publio extends Bookstore {
         return {
             resolveWithFullResponse: true,
             headers: {
+                'User-Agent': undefined,
                 'Content-Type': 'application/json',
                 'X-Auth-Token': `Bearer ${accessToken}`
             },

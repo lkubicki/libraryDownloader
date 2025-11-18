@@ -4,10 +4,10 @@ import * as constants from '../config/config.json';
 import * as bookstores from '../config/bookstores.json';
 import FS from "fs";
 
-async function getBooksFromStore(storeItem: any, cookiesDir: string, booksDir: string, maxFileSize: number) {
+async function getBooksFromStore(storeItemConfig: any, cookiesDir: string, booksDir: string, maxFileSize: number) {
     try {
-        const storeModule = await import("./bookstores/" + storeItem.moduleName);
-        const storeInstance: Bookstore = new storeModule[storeItem.controllerName](storeItem, cookiesDir, booksDir, maxFileSize);
+        const storeModule = await import("./bookstores/" + storeItemConfig.moduleName);
+        const storeInstance: Bookstore = new storeModule[storeItemConfig.controllerName](storeItemConfig, cookiesDir, booksDir, maxFileSize);
         await storeInstance.getBooks();
     } catch (e) {
         console.log(`${new Date().toISOString()} - ${e}`);
