@@ -121,7 +121,7 @@ export class Manning extends Bookstore {
     private async downloadProduct(request: any, bookName: string, meapLastUpdate: string, fileExtension: string, downloadUrl: string, codeLink: string) {
         const bookNameAsPath: string = stringUtils.formatPathName(bookName);
         const downloadDir: string = `${this.booksDir}/${bookNameAsPath}`;
-        const bookFileName: string = `${bookNameAsPath}${meapLastUpdate}.${fileExtension}`;
+        const bookFileName: string = `${bookNameAsPath}${stringUtils.formatPathName(meapLastUpdate)}.${fileExtension}`;
 
         if (!(await filesystemUtils.checkIfDirectoryExists(downloadDir))) {
             FS.mkdirSync(downloadDir);
