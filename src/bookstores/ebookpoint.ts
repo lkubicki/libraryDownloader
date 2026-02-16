@@ -197,7 +197,7 @@ export class Ebookpoint extends Bookstore {
             }
             if (isReady || result.ready) {
                 console.log(`${new Date().toISOString()} - Files generated, downloading`);
-                await timingUtils.delay(timingUtils.ONE_SECOND * 5);
+                await timingUtils.delay(timingUtils.ONE_SECOND * 10);
                 await this.checkFileSizeAndDownload(request, productMetadata.type, productMetadata.controlValue, downloadDir, fileName, fileFormat);
             } else {
                 console.log(`${new Date().toISOString()} - Error downloading ${fileFormat} file for: ${productMetadata.title} - ${result.error}`);

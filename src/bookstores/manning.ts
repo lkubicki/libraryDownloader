@@ -121,7 +121,7 @@ export class Manning extends Bookstore {
     private async downloadProduct(request: any, bookName: string, meapLastUpdate: string, fileExtension: string, downloadUrl: string, codeLink: string) {
         const bookNameAsPath: string = stringUtils.formatPathName(bookName);
         const downloadDir: string = `${this.booksDir}/${bookNameAsPath}`;
-        const bookFileName: string = `${bookNameAsPath}${stringUtils.formatPathName(meapLastUpdate)}.${fileExtension}`;
+        const bookFileName: string = stringUtils.formatPathName(`${bookNameAsPath}${meapLastUpdate}.${fileExtension}`);
 
         if (!(await filesystemUtils.checkIfDirectoryExists(downloadDir))) {
             FS.mkdirSync(downloadDir);
@@ -133,7 +133,7 @@ export class Manning extends Bookstore {
             console.log(`${new Date().toISOString()} - No need to download '${bookFileName} - already downloaded`);
         }
 
-        const codeFileName = `${bookNameAsPath}${meapLastUpdate}-CODE.zip`;
+        const codeFileName = stringUtils.formatPathName(`${bookNameAsPath}${meapLastUpdate}-CODE.zip`);
         if (codeLink && !(await filesystemUtils.checkIfElementExists(downloadDir, codeFileName))) {
             await this.downloadFile(request, codeLink, timingUtils.ONE_SECOND * 3, downloadDir, codeFileName)
                 .catch((error) => console.log(`${new Date().toISOString()} - ${error}`));
