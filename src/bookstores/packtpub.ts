@@ -133,7 +133,7 @@ export class PacktPub extends Bookstore {
                     'Authorization': `Bearer ${accessToken}`
                 }
             };
-            if (bookshelfServiceUrlWithOffset !== undefined || !bookshelfServiceUrlWithOffset.startsWith("http")) {
+            if (bookshelfServiceUrlWithOffset !== undefined && bookshelfServiceUrlWithOffset.startsWith("http")) {
                 request.get(bookshelfServiceUrlWithOffset, getRequestOptions)
                     .then((response) => {
                         resolve(JSON.parse(response.body));
@@ -171,7 +171,8 @@ export class PacktPub extends Bookstore {
                         .catch((error) => {
                             reject(`Could not get filetypes for ${isbn}: ${error}`)
                         });
-                });
+                })
+                .catch((error) => reject(`Could not get filetypes for ${isbn}: ${error}`));
         });
     }
 
@@ -197,6 +198,7 @@ export class PacktPub extends Bookstore {
                         })
                         .catch(error => reject(`Could not get download url for ${fileType} file for ${isbn}: ${error}`));
                 })
+                .catch(error => reject(`Could not get download url for ${fileType} file for ${isbn}: ${error}`))
         });
     }
 

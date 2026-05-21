@@ -36,13 +36,11 @@ export class Publio extends Bookstore {
                     });
                 })
                 .catch((error) => {
-                    if (error.response.statusCode === 401) {
-                        resolve({
-                            isLoggedIn: false,
-                            body: ""
-                        });
+                    if (error.response && error.response.statusCode === 401) {
+                        resolve({isLoggedIn: false, body: ""});
+                    } else {
+                        reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`);
                     }
-                    reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`)
                 });
         });
     }

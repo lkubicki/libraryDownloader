@@ -39,19 +39,19 @@ export abstract class Bookstore {
         return got.extend({
             headers: {
                 'User-Agent': constants.userAgent
-            // },
-            // hooks: {
-            //     beforeRequest: [function(request) {
-            //         console.log(`=============== ${request.method} - ${request.url} ===============`);
-            //         console.log(request.headers);
-            //     }],
-            //     afterResponse: [
-            //         (response, retryWithMergedOptions) => {
-            //             console.log(`==============================================================`);
-            //             console.log(response.body);
-            //             return response;
-            //         }
-            //     ]
+            },
+            hooks: {
+                beforeRequest: [function(request) {
+                    console.log(`=============== ${request.method} - ${request.url} ===============`);
+                    console.log(request.headers);
+                }],
+                afterResponse: [
+                    (response, retryWithMergedOptions) => {
+                        console.log(`==============================================================`);
+                        console.log(response.statusCode);
+                        return response;
+                    }
+                ]
             }
         }).extend({cookieJar});
     }
@@ -145,6 +145,7 @@ export abstract class Bookstore {
     protected async checkIfUserIsLoggedIn(request: any): Promise<{ isLoggedIn: boolean, body: string }> {
         const getRequestOptions = {
             resolveWithFullResponse: true,
+            followRedirect: true,
             maxRedirects: 15
         };
         return new Promise((resolve, reject) => {
@@ -162,13 +163,13 @@ export abstract class Bookstore {
     }
 
     protected async visitBookshelf(request: any, bookshelfUrl: string): Promise<string> {
-        const pageBody = this.getPageBody(request, bookshelfUrl, 0);
+        const pageBody = await this.getPageBody(request, bookshelfUrl, 0);
         await timingUtils.delayExactly(timingUtils.ONE_SECOND * 3);
         return pageBody;
     }
 
     protected async visitLoginForm(request: any, loginFormUrl: string): Promise<string> {
-        const pageBody = this.getPageBody(request, loginFormUrl, 0);
+        const pageBody = await this.getPageBody(request, loginFormUrl, 0);
         await timingUtils.delayExactly(timingUtils.ONE_SECOND * 3);
         return pageBody;
     }
@@ -200,6 +201,7 @@ export abstract class Bookstore {
     }
 
     protected async downloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string, doUriEncoding: boolean = true): Promise<any> {
+        await timingUtils.delay(delay);
         return new Promise((resolve, reject) => {
             console.log(`${new Date().toISOString()} - Started downloading ${fileName}`);
             const fileUrl = doUriEncoding ? encodeURI(downloadUrl) : downloadUrl;

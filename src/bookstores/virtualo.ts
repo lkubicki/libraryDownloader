@@ -31,7 +31,7 @@ export class Virtualo extends Bookstore {
         };
 
         return new Promise((resolve, reject) => {
-            let response = request.post(this.config.loginServiceUrl, loginPostRequestOptions)
+            request.post(this.config.loginServiceUrl, loginPostRequestOptions)
                 .then(() => {
                     request.get(this.config.bookshelfUrl, checkLoginGetRequestOptions)
                         .then((response) => {

@@ -46,7 +46,7 @@ export class Manning extends Bookstore {
     protected async getProducts(request: any, bookshelfPageBody: string) {
         let booksListBody = await this.getPageBody(request, this.config.booksListUrl, 0);
         booksListBody = `<html><body><table>${booksListBody}</table></body></html>`;
-        let $ = await cheerio.load(booksListBody);
+        let $ = cheerio.load(booksListBody);
         for (let productPart of $('tr.license-row')) {
             await timingUtils.delayExactly(timingUtils.ONE_SECOND);
             const title = $('div.product-title', productPart).text().trim();

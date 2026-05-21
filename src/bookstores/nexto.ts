@@ -33,7 +33,7 @@ export class Nexto extends Bookstore {
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {
-        let $ = await cheerio.load(bookshelfPageBody);
+        let $ = cheerio.load(bookshelfPageBody);
         const pageUrls: string[] = this.getPageUrls($, bookshelfPageBody);
         await this.downloadProductsFromPage(request, bookshelfPageBody);
         for (let shelfPageUrl of pageUrls) {
@@ -43,7 +43,7 @@ export class Nexto extends Bookstore {
     }
 
     private async downloadProductsFromPage(request: any, bookshelfPageBody) {
-        let $ = await cheerio.load(bookshelfPageBody);
+        let $ = cheerio.load(bookshelfPageBody);
         for (let productPart of $('#library tbody tr')) {
             const title: string = this.getTitle($, productPart);
             const authors: string = this.getAuthors($, productPart);

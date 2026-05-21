@@ -97,7 +97,7 @@ export class Springer extends Bookstore {
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {
-        let $ = await cheerio.load(bookshelfPageBody);
+        let $ = cheerio.load(bookshelfPageBody);
         for (let productPart of $('.products ul li .product-information')) {
             const bookTitle = this.getBookTitle($, productPart);
             const bookAuthors = this.getBookAuthors($, productPart);
@@ -139,12 +139,7 @@ export class Springer extends Bookstore {
         for (let downloadData of $('.bar-download-actions a.download', productPart)) {
             const downloadLinkText = $(downloadData).text();
             let fileType: string = (downloadLinkText != undefined ? downloadLinkText.replace('Download', '').trim() : "");
-            try {
-                const downloadUrl = await this.getPageBody(request, `${this.config.mainPageUrl}${downloadData.attribs['href']}`, timingUtils.ONE_SECOND);
-                downloads.push({fileType: fileType, downloadLink: downloadUrl});
-            } catch (error) {
-                console.log(`${new Date().toISOString()} - Could not get download url for ${fileType} file for ${bookTitle} - ${error}`);
-            }
+            downloads.push({fileType: fileType, downloadLink: `${this.config.mainPageUrl}${downloadData.attribs['href']}`});
         }
         return downloads;
     }

@@ -35,7 +35,7 @@ export class SwiatKsiazki extends Bookstore {
     }
 
     protected async getProducts(request: any, bookshelfPageBody: string) {
-        let $ = await cheerio.load(bookshelfPageBody);
+        let $ = cheerio.load(bookshelfPageBody);
         for (let productPart of $('.downloadable-products-list .prod-info')) {
             const title: string = $('p.title a', productPart).text().replace(/\([a-z-]+\)?|"/g, '').trim();
             const authors: string = $('p.author a', productPart).text().replace(/\([a-z-]+\)?/g, '').trim();
