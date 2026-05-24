@@ -61,7 +61,7 @@ export class Programista extends Bookstore {
             if ($(magazineIssueElement).siblings(".file-asset, .file-media").length) {
                 const magazineFileLinkElement = $("a", magazineIssueElement);
                 const magazineFileName = magazineFileLinkElement.text().replace(issueNameData.oldName, issueNameData.correctedName);
-                const magazineFileUrl = magazineFileLinkElement[0].attribs['href'];
+                const magazineFileUrl = `${this.config.mainPageUrl}${magazineFileLinkElement[0].attribs['href']}`.replace("//", "/");
                 const fileData: { fileName: string, fileExtension: string, fileUrl: string } = this.getFileMetadata(magazineFileName, magazineFileUrl);
                 try {
                     await this.downloadIssueFile(request, downloadDir, fileData)
