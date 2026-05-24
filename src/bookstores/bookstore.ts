@@ -39,19 +39,19 @@ export abstract class Bookstore {
         return got.extend({
             headers: {
                 'User-Agent': constants.userAgent
-            },
-            hooks: {
-                beforeRequest: [function(request) {
-                    console.log(`=============== ${request.method} - ${request.url} ===============`);
-                    console.log(request.headers);
-                }],
-                afterResponse: [
-                    (response, retryWithMergedOptions) => {
-                        console.log(`==============================================================`);
-                        console.log(response.statusCode);
-                        return response;
-                    }
-                ]
+            // },
+            // hooks: {
+            //     beforeRequest: [function(request) {
+            //         console.log(`=============== ${request.method} - ${request.url} ===============`);
+            //         console.log(request.headers);
+            //     }],
+            //     afterResponse: [
+            //         (response, retryWithMergedOptions) => {
+            //             console.log(`==============================================================`);
+            //             console.log(response.statusCode);
+            //             return response;
+            //         }
+            //     ]
             }
         }).extend({cookieJar});
     }
@@ -78,16 +78,13 @@ export abstract class Bookstore {
         } else {
             await timingUtils.delay(delay);
         }
-        return new Promise((resolve, reject) => {
-            request.get(pageUrl)
-                .then((response) => {
-                    resolve(response.body);
-                })
-                .catch((error) => {
-                    console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
-                    reject(error);
-                });
-        });
+        try {
+            const response = await request.get(pageUrl);
+            return response.body;
+        } catch (error) {
+            console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
+            throw error;
+        }
     }
 
     protected async getPageBodyWithAdditionalOptions(request: any, pageUrl: string, delay: number, exactDelay, additionalOptions: any): Promise<string> {
@@ -96,17 +93,13 @@ export abstract class Bookstore {
         } else {
             await timingUtils.delay(delay);
         }
-        // console.log(pageUrl);
-        return new Promise((resolve, reject) => {
-            request.get(pageUrl, additionalOptions)
-                .then((response) => {
-                    resolve(response.body);
-                })
-                .catch((error) => {
-                    console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
-                    reject(error);
-                });
-        });
+        try {
+            const response = await request.get(pageUrl, additionalOptions);
+            return response.body;
+        } catch (error) {
+            console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
+            throw error;
+        }
     }
 
     protected async postForPageBodyWithAdditionalOptions(request: any, pageUrl: string, delay: number, exactDelay, additionalOptions: any): Promise<string> {
@@ -115,31 +108,23 @@ export abstract class Bookstore {
         } else {
             await timingUtils.delay(delay);
         }
-        // console.log(pageUrl);
-        return new Promise((resolve, reject) => {
-            request.post(pageUrl, additionalOptions)
-                .then((response) => {
-                    resolve(response.body);
-                })
-                .catch((error) => {
-                    console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
-                    reject(error);
-                });
-        });
+        try {
+            const response = await request.post(pageUrl, additionalOptions);
+            return response.body;
+        } catch (error) {
+            console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
+            throw error;
+        }
     }
 
     protected async getFullPageResponse(request: any, pageUrl: string, delay: number): Promise<string> {
         await timingUtils.delay(delay);
-        return new Promise((resolve, reject) => {
-            request.get(pageUrl)
-                .then((response) => {
-                    resolve(response);
-                })
-                .catch((error) => {
-                    console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
-                    reject(error);
-                });
-        });
+        try {
+            return await request.get(pageUrl);
+        } catch (error) {
+            console.log(`${new Date().toISOString()} - An error occured while fetching  ${pageUrl}: ${error}`);
+            throw error;
+        }
     }
 
     protected async checkIfUserIsLoggedIn(request: any): Promise<{ isLoggedIn: boolean, body: string }> {
@@ -148,18 +133,12 @@ export abstract class Bookstore {
             followRedirect: true,
             maxRedirects: 15
         };
-        return new Promise((resolve, reject) => {
-            request.get(this.config.bookshelfUrl, getRequestOptions)
-                .then((response) => {
-                    resolve({
-                        isLoggedIn: (response.url.indexOf(this.notLoggedInRedirectUrlPart) < 0),
-                        body: response.body
-                    });
-                })
-                .catch((error) => {
-                    reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`)
-                });
-        });
+        const response = await request.get(this.config.bookshelfUrl, getRequestOptions)
+            .catch((error) => { throw new Error(`Could not check if ${this.config.login} is logged in. Error: ${error}`); });
+        return {
+            isLoggedIn: (response.url.indexOf(this.notLoggedInRedirectUrlPart) < 0),
+            body: response.body
+        };
     }
 
     protected async visitBookshelf(request: any, bookshelfUrl: string): Promise<string> {
@@ -178,26 +157,16 @@ export abstract class Bookstore {
         return this.sendLoginFormAtUrl(request, this.config.loginServiceUrl, postRequestOptions);
     }
 
-    protected sendLoginFormAtUrl(request: any, loginUrl: string, postRequestOptions: object): Promise<string> {
-        return new Promise((resolve, reject) => {
-            request.post(loginUrl, postRequestOptions)
-                .then((response) => {
-                    this.checkIfUserIsLoggedIn(request)
-                        .then((checkResult) => {
-                            if (checkResult.isLoggedIn) {
-                                console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
-                                resolve(checkResult.body);
-                            } else {
-                                reject(`Could not log in as ${this.config.login}`);
-                            }
-                        }).catch((error) => {
-                        reject(`Could not check if ${this.config.login} is logged in. Error: ${error}`);
-                    });
-                })
-                .catch((error) => {
-                    reject(`Could not log in as ${this.config.login}. Error: ${error}`);
-                })
-        });
+    protected async sendLoginFormAtUrl(request: any, loginUrl: string, postRequestOptions: object): Promise<string> {
+        await request.post(loginUrl, postRequestOptions)
+            .catch((error) => { throw new Error(`Could not log in as ${this.config.login}. Error: ${error}`); });
+        const checkResult = await this.checkIfUserIsLoggedIn(request)
+            .catch((error) => { throw new Error(`Could not check if ${this.config.login} is logged in. Error: ${error}`); });
+        if (checkResult.isLoggedIn) {
+            console.log(`${new Date().toISOString()} - Logged in as ${this.config.login}`);
+            return checkResult.body;
+        }
+        throw new Error(`Could not log in as ${this.config.login}`);
     }
 
     protected async downloadFile(request: any, downloadUrl: string, delay: number, downloadDir: string, fileName: string, doUriEncoding: boolean = true): Promise<any> {
