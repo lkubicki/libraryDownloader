@@ -6,7 +6,7 @@
   "dependencies": {
     "async": "2.6.4",
     "cheerio": "1.0.0-rc.12",
-    "form-data": "4.0.4",
+    "form-data": "4.0.6",
     "got": "11.8.5",
     "iconv-lite": "0.5.1",
     "tough-cookie": "4.1.3",
